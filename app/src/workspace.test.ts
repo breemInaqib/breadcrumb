@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { seedWorkspace } from './data'
 import type { Breadcrumb } from './types'
-import { recordBreadcrumb } from './workspace'
+import {
+  getEligiblePredecessors,
+  recordBreadcrumb,
+  updateBreadcrumb,
+} from './workspace'
 
 function makeBreadcrumb(overrides: Partial<Breadcrumb> = {}): Breadcrumb {
   return {
@@ -29,5 +33,71 @@ describe('project workspace', () => {
     expect(updated.project.currentGoal).toBe(nextGoal)
     expect(updated.breadcrumbs.at(-1)).toBe(breadcrumb)
     expect(updated.breadcrumbs.at(-1)?.nextGoal).toBe(nextGoal)
+  })
+
+  it('corrects a breadcrumb in place so existing traces remain valid', () => {
+    const original = seedWorkspace.breadcrumbs[4]
+    const corrected = {
+      ...original,
+      title: 'Compare modal and persistent inline previews',
+    }
+    const updated = updateBreadcrumb(seedWorkspace, corrected)
+
+    expect(updated.breadcrumbs).toHaveLength(seedWorkspace.breadcrumbs.length)
+    expect(updated.breadcrumbs.find(({ id }) => id === original.id)?.title).toBe(
+      corrected.title,
+    )
+    expect(updated.breadcrumbs.find(({ id }) => id === 'b6')?.buildsOnId).toBe(
+      original.id,
+    )
+  })
+
+  it('recomputes the current goal from the latest edited goal transition', () => {
+    const goalSource = seedWorkspace.breadcrumbs[5]
+    const nextGoal = 'Measure whether inline previews improve published flows.'
+    const updated = updateBreadcrumb(seedWorkspace, {
+      ...goalSource,
+      nextGoal,
+    })
+
+    expect(updated.project.currentGoal).toBe(nextGoal)
+    expect(updated.breadcrumbs.find(({ id }) => id === goalSource.id)?.nextGoal).toBe(
+      nextGoal,
+    )
+  })
+
+  it('keeps later goal transitions authoritative when older history is corrected', () => {
+    const laterGoal = makeBreadcrumb({
+      id: 'b7',
+      nextGoal: 'Prepare the validated preview pattern for release.',
+    })
+    const withLaterGoal = recordBreadcrumb(seedWorkspace, laterGoal)
+    const correctedEarlierGoal = {
+      ...seedWorkspace.breadcrumbs[5],
+      nextGoal: 'Validate preview quality in the active pilot.',
+    }
+    const updated = updateBreadcrumb(withLaterGoal, correctedEarlierGoal)
+
+    expect(updated.project.currentGoal).toBe(laterGoal.nextGoal)
+  })
+
+  it('offers only causal predecessors that cannot create a cycle', () => {
+    const eligible = getEligiblePredecessors(
+      seedWorkspace.breadcrumbs,
+      'b4',
+      '2026-07-31T23:59:59.000Z',
+    )
+
+    expect(eligible.map(({ id }) => id)).toEqual(['b3', 'b2', 'b1'])
+  })
+
+  it('does not offer moments that occur after the selected date', () => {
+    const eligible = getEligiblePredecessors(
+      seedWorkspace.breadcrumbs,
+      undefined,
+      '2026-06-18T23:59:59.000Z',
+    )
+
+    expect(eligible.map(({ id }) => id)).toEqual(['b2', 'b1'])
   })
 })

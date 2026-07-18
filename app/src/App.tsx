@@ -6,6 +6,7 @@ import {
   ExternalLink,
   FileText,
   History,
+  Pencil,
   Plus,
   X,
 } from 'lucide-react'
@@ -13,7 +14,11 @@ import { breadcrumbTypes, type Breadcrumb, type BreadcrumbType } from './types'
 import { loadWorkspace, saveWorkspace } from './storage'
 import { deriveStory, sortChronologically } from './story'
 import { formatSourceLinkLabel, parseSourceLinks } from './source-links'
-import { recordBreadcrumb } from './workspace'
+import {
+  getEligiblePredecessors,
+  recordBreadcrumb,
+  updateBreadcrumb,
+} from './workspace'
 
 type View = 'overview' | 'history' | 'story'
 
@@ -43,6 +48,7 @@ interface TimelineProps {
   breadcrumbs: Breadcrumb[]
   highlightedId?: string
   limit?: number
+  onEdit?: (breadcrumb: Breadcrumb) => void
   onTrace?: (breadcrumbId: string) => void
 }
 
@@ -50,6 +56,7 @@ export function Timeline({
   breadcrumbs,
   highlightedId,
   limit,
+  onEdit,
   onTrace,
 }: TimelineProps) {
   const ordered = sortChronologically(breadcrumbs)
@@ -76,8 +83,21 @@ export function Timeline({
             <article className="timeline-content">
               {isHighlighted && <p className="trace-arrival">Traced source</p>}
               <div className="entry-heading">
-                <TypeLabel type={breadcrumb.type} />
-                <h3>{breadcrumb.title}</h3>
+                <div className="entry-title">
+                  <TypeLabel type={breadcrumb.type} />
+                  <h3>{breadcrumb.title}</h3>
+                </div>
+                {onEdit && (
+                  <button
+                    aria-label={`Edit ${breadcrumb.title}`}
+                    className="entry-edit"
+                    onClick={() => onEdit(breadcrumb)}
+                    type="button"
+                  >
+                    <Pencil size={13} aria-hidden="true" />
+                    Edit
+                  </button>
+                )}
               </div>
               {buildsOn && onTrace && (
                 <button
@@ -139,21 +159,56 @@ export function Timeline({
 interface CaptureFormProps {
   breadcrumbs: Breadcrumb[]
   currentGoal: string
+  editingBreadcrumb?: Breadcrumb
   onClose: () => void
   onSave: (breadcrumb: Breadcrumb) => void
   projectId: string
+  requiresGoal: boolean
 }
 
 function CaptureForm({
   breadcrumbs,
   currentGoal,
+  editingBreadcrumb,
   onClose,
   onSave,
   projectId,
+  requiresGoal,
 }: CaptureFormProps) {
-  const [type, setType] = useState<BreadcrumbType>('Decision')
+  const [type, setType] = useState<BreadcrumbType>(
+    editingBreadcrumb?.type ?? 'Decision',
+  )
+  const [buildsOnId, setBuildsOnId] = useState(
+    editingBreadcrumb?.buildsOnId ?? '',
+  )
+  const [occurredAt, setOccurredAt] = useState(
+    editingBreadcrumb?.occurredAt.slice(0, 10) ?? inputDate,
+  )
   const [sourceError, setSourceError] = useState('')
-  const priorBreadcrumbs = sortChronologically(breadcrumbs).reverse()
+  const isEditing = Boolean(editingBreadcrumb)
+  const priorBreadcrumbs = occurredAt
+    ? getEligiblePredecessors(
+      breadcrumbs,
+      editingBreadcrumb?.id,
+      new Date(`${occurredAt}T23:59:59`).toISOString(),
+    )
+    : []
+
+  function changeDate(nextDate: string) {
+    setOccurredAt(nextDate)
+    if (!nextDate) {
+      setBuildsOnId('')
+      return
+    }
+    if (!buildsOnId) return
+    const nextLimit = new Date(`${nextDate}T23:59:59`).toISOString()
+    const predecessorStillAvailable = getEligiblePredecessors(
+      breadcrumbs,
+      editingBreadcrumb?.id,
+      nextLimit,
+    ).some(({ id }) => id === buildsOnId)
+    if (!predecessorStillAvailable) setBuildsOnId('')
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -175,7 +230,7 @@ function CaptureForm({
     setSourceError('')
 
     onSave({
-      id: crypto.randomUUID(),
+      id: editingBreadcrumb?.id ?? crypto.randomUUID(),
       projectId,
       buildsOnId: String(form.get('buildsOnId') ?? '') || undefined,
       nextGoal: String(form.get('nextGoal') ?? '').trim() || undefined,
@@ -200,9 +255,17 @@ function CaptureForm({
       >
         <div className="drawer-header">
           <div>
-            <p className="eyebrow">Capture significance, not activity</p>
-            <h2 id="capture-title">Add a breadcrumb</h2>
-            <p>Record a moment that changed the project’s understanding or direction.</p>
+            <p className="eyebrow">
+              {isEditing ? 'Correct the record' : 'Capture significance, not activity'}
+            </p>
+            <h2 id="capture-title">
+              {isEditing ? 'Edit breadcrumb' : 'Add a breadcrumb'}
+            </h2>
+            <p>
+              {isEditing
+                ? 'Update this moment while keeping its place in the project’s history.'
+                : 'Record a moment that changed the project’s understanding or direction.'}
+            </p>
           </div>
           <button className="icon-button" onClick={onClose} type="button">
             <X size={19} aria-hidden="true" />
@@ -232,7 +295,13 @@ function CaptureForm({
 
             <label>
               <span>Short title</span>
-              <input autoFocus name="title" placeholder="Name the turning point" required />
+              <input
+                autoFocus
+                defaultValue={editingBreadcrumb?.title}
+                name="title"
+                placeholder="Name the turning point"
+                required
+              />
             </label>
 
             <div className="capture-field">
@@ -240,8 +309,9 @@ function CaptureForm({
                 <span>Builds on <small>Optional</small></span>
                 <select
                   aria-describedby="builds-on-helper"
-                  defaultValue=""
                   name="buildsOnId"
+                  onChange={(event) => setBuildsOnId(event.target.value)}
+                  value={buildsOnId}
                 >
                   <option value="">No earlier breadcrumb</option>
                   {priorBreadcrumbs.map((breadcrumb) => (
@@ -260,6 +330,7 @@ function CaptureForm({
               <span>What happened</span>
               <textarea
                 name="whatHappened"
+                defaultValue={editingBreadcrumb?.whatHappened}
                 placeholder="Describe the meaningful change, decision, or learning."
                 required
                 rows={3}
@@ -270,6 +341,7 @@ function CaptureForm({
               <span>Why it happened</span>
               <textarea
                 name="why"
+                defaultValue={editingBreadcrumb?.why}
                 placeholder="Preserve the reasoning or evidence behind it."
                 required
                 rows={3}
@@ -280,6 +352,7 @@ function CaptureForm({
               <span>Outcome or consequence <small>Optional</small></span>
               <textarea
                 name="outcome"
+                defaultValue={editingBreadcrumb?.outcome}
                 placeholder="What did this lead to?"
                 rows={2}
               />
@@ -287,23 +360,35 @@ function CaptureForm({
 
             <div className="capture-field">
               <label>
-                <span>New current goal <small>Optional</small></span>
+                <span>
+                  New current goal {!requiresGoal && <small>Optional</small>}
+                </span>
                 <input
                   aria-describedby="next-goal-helper"
+                  defaultValue={editingBreadcrumb?.nextGoal}
                   name="nextGoal"
                   placeholder={currentGoal}
+                  required={requiresGoal}
                   type="text"
                 />
               </label>
               <small className="capture-helper" id="next-goal-helper">
-                Use only if this moment changes what the project is working toward.
+                {requiresGoal
+                  ? 'This moment supports the current goal. Keep a goal here so it remains traceable.'
+                  : 'Use only if this moment changes what the project is working toward.'}
               </small>
             </div>
 
             <div className="form-row">
               <label>
                 <span>Date</span>
-                <input defaultValue={inputDate} name="occurredAt" required type="date" />
+                <input
+                  name="occurredAt"
+                  onChange={(event) => changeDate(event.target.value)}
+                  required
+                  type="date"
+                  value={occurredAt}
+                />
               </label>
               <div className="capture-field">
                 <label>
@@ -313,6 +398,7 @@ function CaptureForm({
                       ? 'source-links-helper source-links-error'
                       : 'source-links-helper'}
                     aria-invalid={sourceError ? 'true' : undefined}
+                    defaultValue={editingBreadcrumb?.sourceLinks.join(', ')}
                     name="sourceLinks"
                     onChange={() => setSourceError('')}
                     placeholder="https://example.com/research"
@@ -336,7 +422,7 @@ function CaptureForm({
               Cancel
             </button>
             <button className="button-primary" type="submit">
-              Save breadcrumb
+              {isEditing ? 'Save changes' : 'Save breadcrumb'}
             </button>
           </div>
         </form>
@@ -349,6 +435,7 @@ export default function App() {
   const [workspace, setWorkspace] = useState(loadWorkspace)
   const [view, setView] = useState<View>('overview')
   const [captureOpen, setCaptureOpen] = useState(false)
+  const [editingBreadcrumb, setEditingBreadcrumb] = useState<Breadcrumb>()
   const [savedMessage, setSavedMessage] = useState('')
   const [tracedBreadcrumbId, setTracedBreadcrumbId] = useState<string>()
 
@@ -375,7 +462,10 @@ export default function App() {
   useEffect(() => {
     if (!captureOpen) return
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setCaptureOpen(false)
+      if (event.key === 'Escape') {
+        setCaptureOpen(false)
+        setEditingBreadcrumb(undefined)
+      }
     }
     document.body.classList.add('drawer-open')
     window.addEventListener('keydown', closeOnEscape)
@@ -417,6 +507,44 @@ export default function App() {
         : 'Breadcrumb added to the project history',
     )
     window.setTimeout(() => setSavedMessage(''), 3000)
+  }
+
+  function closeBreadcrumbForm() {
+    setCaptureOpen(false)
+    setEditingBreadcrumb(undefined)
+  }
+
+  function openBreadcrumbForm(breadcrumb?: Breadcrumb) {
+    setEditingBreadcrumb(breadcrumb)
+    setCaptureOpen(true)
+  }
+
+  function saveBreadcrumb(breadcrumb: Breadcrumb) {
+    if (!editingBreadcrumb) {
+      addBreadcrumb(breadcrumb)
+      return
+    }
+
+    const updatedWorkspace = updateBreadcrumb(workspace, breadcrumb)
+    const goalChanged =
+      updatedWorkspace.project.currentGoal !== workspace.project.currentGoal
+    setWorkspace(updatedWorkspace)
+    setTracedBreadcrumbId(breadcrumb.id)
+    closeBreadcrumbForm()
+    setSavedMessage(
+      goalChanged
+        ? 'Breadcrumb corrected and current goal updated'
+        : 'Breadcrumb corrected in the project history',
+    )
+    window.setTimeout(() => setSavedMessage(''), 3000)
+    window.setTimeout(() => {
+      const corrected = document.getElementById(`breadcrumb-${breadcrumb.id}`)
+      corrected?.focus({ preventScroll: true })
+      corrected?.scrollIntoView({
+        behavior: preferredScrollBehavior(),
+        block: 'center',
+      })
+    }, 60)
   }
 
   return (
@@ -479,7 +607,7 @@ export default function App() {
                 </div>
               </div>
               <div className="capture-callout">
-                <button className="button-primary" onClick={() => setCaptureOpen(true)}>
+                <button className="button-primary" onClick={() => openBreadcrumbForm()}>
                   <Plus size={17} aria-hidden="true" />
                   Add breadcrumb
                 </button>
@@ -546,7 +674,7 @@ export default function App() {
                   The decisions, changes, experiments, discoveries, and milestones that shaped {workspace.project.name}.
                 </p>
               </div>
-              <button className="button-primary" onClick={() => setCaptureOpen(true)}>
+              <button className="button-primary" onClick={() => openBreadcrumbForm()}>
                 <Plus size={17} aria-hidden="true" />
                 Add breadcrumb
               </button>
@@ -554,6 +682,7 @@ export default function App() {
             <Timeline
               breadcrumbs={ordered}
               highlightedId={tracedBreadcrumbId}
+              onEdit={openBreadcrumbForm}
               onTrace={showSource}
             />
           </section>
@@ -644,9 +773,11 @@ export default function App() {
         <CaptureForm
           breadcrumbs={workspace.breadcrumbs}
           currentGoal={workspace.project.currentGoal}
-          onClose={() => setCaptureOpen(false)}
-          onSave={addBreadcrumb}
+          editingBreadcrumb={editingBreadcrumb}
+          onClose={closeBreadcrumbForm}
+          onSave={saveBreadcrumb}
           projectId={workspace.project.id}
+          requiresGoal={editingBreadcrumb?.id === currentGoalSource?.id}
         />
       )}
 

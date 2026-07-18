@@ -52,3 +52,7 @@ Capture accepts complete HTTP or HTTPS source links, normalizes equivalent URLs,
 ## Name sources from their destination
 
 History labels each saved source with its hostname and readable path instead of a generic number. Query strings and fragments stay out of the visible label, the full URL remains the link target and title, and long destinations truncate visually. Evidence becomes recognizable without fetching metadata or expanding the stored source model.
+
+## Correct the original moment in place
+
+History offers a quiet edit action on each breadcrumb and reuses the capture drawer with the recorded values prefilled. Saving replaces that moment under the same ID, so citations and downstream causal links remain intact. Causal predecessor choices exclude the edited moment and its descendants, and changing a goal-setting breadcrumb recomputes the current goal from the latest recorded transition. This keeps project memory repairable without introducing revisions, comments, or another persistent entity.

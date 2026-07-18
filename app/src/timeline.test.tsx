@@ -48,4 +48,14 @@ describe('project timeline', () => {
     expect(html).toContain('target="_blank"')
     expect(html).toContain('(opens in a new tab)')
   })
+
+  it('offers a named correction action when editing is available', () => {
+    const source = seedWorkspace.breadcrumbs[0]
+    const html = renderToStaticMarkup(
+      <Timeline breadcrumbs={[source]} onEdit={() => undefined} />,
+    )
+
+    expect(html).toContain(`aria-label="Edit ${source.title}"`)
+    expect(html).toContain('Edit')
+  })
 })
