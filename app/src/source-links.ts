@@ -35,3 +35,25 @@ export function parseSourceLinks(value: string): SourceLinkParseResult {
 
   return { links, invalidLinks }
 }
+
+export function formatSourceLinkLabel(link: string): string {
+  try {
+    const url = new URL(link)
+    const host = url.host.replace(/^www\./i, '')
+    const path = url.pathname
+      .split('/')
+      .filter(Boolean)
+      .map((segment) => {
+        try {
+          return decodeURIComponent(segment)
+        } catch {
+          return segment
+        }
+      })
+      .join('/')
+
+    return path ? `${host}/${path}` : host
+  } catch {
+    return link
+  }
+}

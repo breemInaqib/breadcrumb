@@ -622,10 +622,18 @@ textarea:focus-visible {
 
 .source-links a {
   display: inline-flex;
+  max-width: 100%;
   align-items: center;
   gap: 4px;
   color: var(--accent-dark);
   text-underline-offset: 3px;
+}
+
+.source-link-label {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .story-preview {

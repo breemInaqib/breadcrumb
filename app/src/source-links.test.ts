@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseSourceLinks } from './source-links'
+import { formatSourceLinkLabel, parseSourceLinks } from './source-links'
 
 describe('source link parsing', () => {
   it('accepts complete web links and normalizes them', () => {
@@ -38,5 +38,29 @@ describe('source link parsing', () => {
 
   it('treats an empty optional field as valid', () => {
     expect(parseSourceLinks('')).toEqual({ links: [], invalidLinks: [] })
+  })
+})
+
+describe('source link labels', () => {
+  it('uses the destination host for a root link', () => {
+    expect(formatSourceLinkLabel('https://www.example.com/')).toBe('example.com')
+  })
+
+  it('keeps the meaningful path while omitting query details', () => {
+    expect(
+      formatSourceLinkLabel(
+        'https://example.com/research/pilot-evidence?view=review#findings',
+      ),
+    ).toBe('example.com/research/pilot-evidence')
+  })
+
+  it('decodes readable path segments', () => {
+    expect(formatSourceLinkLabel('https://example.com/Research%20Notes')).toBe(
+      'example.com/Research Notes',
+    )
+  })
+
+  it('falls back safely for legacy malformed values', () => {
+    expect(formatSourceLinkLabel('research-notes')).toBe('research-notes')
   })
 })

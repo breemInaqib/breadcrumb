@@ -34,4 +34,18 @@ describe('project timeline', () => {
     expect(html).toContain('tabindex="-1"')
     expect(html).toContain('Traced source')
   })
+
+  it('renders an identifiable source while preserving its full destination', () => {
+    const link = 'https://research.example.com/projects/patchwork/pilot-evidence'
+    const breadcrumb = {
+      ...seedWorkspace.breadcrumbs[0],
+      sourceLinks: [link],
+    }
+    const html = renderToStaticMarkup(<Timeline breadcrumbs={[breadcrumb]} />)
+
+    expect(html).toContain('research.example.com/projects/patchwork/pilot-evidence')
+    expect(html).toContain(`href="${link}"`)
+    expect(html).toContain('target="_blank"')
+    expect(html).toContain('(opens in a new tab)')
+  })
 })

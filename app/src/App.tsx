@@ -12,7 +12,7 @@ import {
 import { breadcrumbTypes, type Breadcrumb, type BreadcrumbType } from './types'
 import { loadWorkspace, saveWorkspace } from './storage'
 import { deriveStory, sortChronologically } from './story'
-import { parseSourceLinks } from './source-links'
+import { formatSourceLinkLabel, parseSourceLinks } from './source-links'
 import { recordBreadcrumb } from './workspace'
 
 type View = 'overview' | 'history' | 'story'
@@ -117,10 +117,13 @@ export function Timeline({
               {breadcrumb.sourceLinks.length > 0 && (
                 <div className="source-links">
                   <span>Sources</span>
-                  {breadcrumb.sourceLinks.map((link, index) => (
-                    <a href={link} key={link} rel="noreferrer" target="_blank">
-                      Source {index + 1}
+                  {breadcrumb.sourceLinks.map((link) => (
+                    <a href={link} key={link} rel="noreferrer" target="_blank" title={link}>
+                      <span className="source-link-label">
+                        {formatSourceLinkLabel(link)}
+                      </span>
                       <ExternalLink size={12} aria-hidden="true" />
+                      <span className="sr-only">(opens in a new tab)</span>
                     </a>
                   ))}
                 </div>

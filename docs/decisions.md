@@ -48,3 +48,7 @@ Following a citation, causal predecessor, current goal, or resumption cue tempor
 ## Preserve source links explicitly
 
 Capture accepts complete HTTP or HTTPS source links, normalizes equivalent URLs, and removes duplicates. If any entry is incomplete or unsupported, the breadcrumb remains unsaved and the form identifies the source field and explains how to repair it. Evidence is never discarded behind a success message.
+
+## Name sources from their destination
+
+History labels each saved source with its hostname and readable path instead of a generic number. Query strings and fragments stay out of the visible label, the full URL remains the link target and title, and long destinations truncate visually. Evidence becomes recognizable without fetching metadata or expanding the stored source model.
