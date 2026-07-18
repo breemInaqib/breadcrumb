@@ -100,7 +100,7 @@ Users can create a breadcrumb with:
 * outcome or consequence, when known;
 * a new current goal, when the moment changes what the project is working toward;
 * date or time;
-* optional source links.
+* optional source links, validated before the breadcrumb is saved.
 
 Supported types:
 

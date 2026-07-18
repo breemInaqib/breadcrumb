@@ -12,6 +12,7 @@ import {
 import { breadcrumbTypes, type Breadcrumb, type BreadcrumbType } from './types'
 import { loadWorkspace, saveWorkspace } from './storage'
 import { deriveStory, sortChronologically } from './story'
+import { parseSourceLinks } from './source-links'
 import { recordBreadcrumb } from './workspace'
 
 type View = 'overview' | 'history' | 'story'
@@ -23,20 +24,6 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
 })
 
 const inputDate = new Date().toISOString().slice(0, 10)
-
-function parseSourceLinks(value: string) {
-  return value
-    .split(/[\n,]/)
-    .map((link) => link.trim())
-    .filter((link) => {
-      try {
-        const url = new URL(link)
-        return url.protocol === 'http:' || url.protocol === 'https:'
-      } catch {
-        return false
-      }
-    })
-}
 
 function formatDate(value: string) {
   return dateFormatter.format(new Date(value))
@@ -162,13 +149,27 @@ function CaptureForm({
   projectId,
 }: CaptureFormProps) {
   const [type, setType] = useState<BreadcrumbType>('Decision')
+  const [sourceError, setSourceError] = useState('')
   const priorBreadcrumbs = sortChronologically(breadcrumbs).reverse()
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     const date = String(form.get('occurredAt'))
-    const sourceLinks = parseSourceLinks(String(form.get('sourceLinks') ?? ''))
+    const sourceResult = parseSourceLinks(String(form.get('sourceLinks') ?? ''))
+
+    if (sourceResult.invalidLinks.length > 0) {
+      const sourceInput = event.currentTarget.elements.namedItem('sourceLinks')
+      setSourceError(
+        sourceResult.invalidLinks.length === 1
+          ? 'Enter a full link beginning with http:// or https://.'
+          : `Fix all ${sourceResult.invalidLinks.length} links. Start each with http:// or https://.`,
+      )
+      if (sourceInput instanceof HTMLInputElement) sourceInput.focus()
+      return
+    }
+
+    setSourceError('')
 
     onSave({
       id: crypto.randomUUID(),
@@ -181,7 +182,7 @@ function CaptureForm({
       why: String(form.get('why')).trim(),
       outcome: String(form.get('outcome') ?? '').trim(),
       occurredAt: new Date(`${date}T12:00:00`).toISOString(),
-      sourceLinks,
+      sourceLinks: sourceResult.links,
     })
   }
 
@@ -301,10 +302,29 @@ function CaptureForm({
                 <span>Date</span>
                 <input defaultValue={inputDate} name="occurredAt" required type="date" />
               </label>
-              <label>
-                <span>Source links <small>Optional</small></span>
-                <input name="sourceLinks" placeholder="Paste links, separated by commas" type="text" />
-              </label>
+              <div className="capture-field">
+                <label>
+                  <span>Source links <small>Optional</small></span>
+                  <input
+                    aria-describedby={sourceError
+                      ? 'source-links-helper source-links-error'
+                      : 'source-links-helper'}
+                    aria-invalid={sourceError ? 'true' : undefined}
+                    name="sourceLinks"
+                    onChange={() => setSourceError('')}
+                    placeholder="https://example.com/research"
+                    type="text"
+                  />
+                </label>
+                <small className="capture-helper" id="source-links-helper">
+                  Use full web links. Separate multiple links with commas.
+                </small>
+                {sourceError && (
+                  <p className="field-error" id="source-links-error" role="alert">
+                    {sourceError}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

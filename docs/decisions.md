@@ -44,3 +44,7 @@ History renders the resulting goal on that source moment, so following the trace
 ## Mark traced History destinations
 
 Following a citation, causal predecessor, current goal, or resumption cue temporarily marks the destination breadcrumb as **Traced source** and moves focus to it. Navigating to History directly clears the marker. This makes cross-view traceability perceptible without storing selection state or adding a separate detail view.
+
+## Preserve source links explicitly
+
+Capture accepts complete HTTP or HTTPS source links, normalizes equivalent URLs, and removes duplicates. If any entry is incomplete or unsupported, the breadcrumb remains unsaved and the form identifies the source field and explains how to repair it. Evidence is never discarded behind a success message.
