@@ -10,7 +10,12 @@ import {
   Plus,
   X,
 } from 'lucide-react'
-import { breadcrumbTypes, type Breadcrumb, type BreadcrumbType } from './types'
+import {
+  breadcrumbTypes,
+  type Breadcrumb,
+  type BreadcrumbType,
+  type Project,
+} from './types'
 import { loadWorkspace, saveWorkspace } from './storage'
 import {
   deriveStory,
@@ -19,8 +24,11 @@ import {
 } from './story'
 import { formatSourceLinkLabel, parseSourceLinks } from './source-links'
 import {
+  createProject,
   getEligiblePredecessors,
+  openProject,
   recordBreadcrumb,
+  requiresGoalForEdit,
   updateBreadcrumb,
 } from './workspace'
 import { deriveOpenThreads, type OpenThread } from './home'
@@ -397,6 +405,97 @@ function EmptyMemory({
   )
 }
 
+interface ProjectChooserProps {
+  currentProjectId: string
+  onClose: () => void
+  onCreate: (project: Project) => void
+  onOpen: (projectId: string) => void
+  projects: Project[]
+}
+
+function ProjectChooser({
+  currentProjectId,
+  onClose,
+  onCreate,
+  onOpen,
+  projects,
+}: ProjectChooserProps) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    onCreate({
+      id: crypto.randomUUID(),
+      name: String(form.get('name')).trim(),
+      description: String(form.get('description')).trim(),
+      currentGoal: String(form.get('currentGoal')).trim(),
+      createdAt: new Date().toISOString(),
+    })
+  }
+
+  return (
+    <div className="drawer-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        aria-labelledby="project-chooser-title"
+        aria-modal="true"
+        className="project-chooser"
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="drawer-header">
+          <div>
+            <p className="eyebrow">Your local project memory</p>
+            <h2 id="project-chooser-title">Open or create a project</h2>
+            <p>Each project keeps its own breadcrumbs, evidence, and derived story.</p>
+          </div>
+          <button className="icon-button" onClick={onClose} type="button">
+            <X size={19} aria-hidden="true" />
+            <span className="sr-only">Close</span>
+          </button>
+        </div>
+
+        <div className="project-chooser-body">
+          <div className="project-list" aria-label="Available projects">
+            {projects.map((project) => (
+              <button
+                aria-current={project.id === currentProjectId ? 'true' : undefined}
+                className="project-choice"
+                key={project.id}
+                onClick={() => onOpen(project.id)}
+                type="button"
+              >
+                <span>{project.id === currentProjectId ? 'Current project' : 'Open project'}</span>
+                <strong>{project.name}</strong>
+                <small>{project.currentGoal}</small>
+              </button>
+            ))}
+          </div>
+
+          <form className="project-form" onSubmit={handleSubmit}>
+            <p className="eyebrow">Start a new memory</p>
+            <h3>Create a project</h3>
+            <label>
+              <span>Project name</span>
+              <input name="name" placeholder="e.g. First-run guide" required />
+            </label>
+            <label>
+              <span>What is it for?</span>
+              <textarea name="description" placeholder="A concise project description" required rows={2} />
+            </label>
+            <label>
+              <span>Current goal</span>
+              <textarea name="currentGoal" placeholder="What is this project trying to achieve?" required rows={2} />
+            </label>
+            <button className="button-primary" type="submit">
+              <Plus size={17} aria-hidden="true" />
+              Create project
+            </button>
+          </form>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 interface CaptureFormProps {
   breadcrumbs: Breadcrumb[]
   currentGoal: string
@@ -679,10 +778,16 @@ export default function App() {
   const [editingBreadcrumb, setEditingBreadcrumb] = useState<Breadcrumb>()
   const [savedMessage, setSavedMessage] = useState('')
   const [tracedBreadcrumbId, setTracedBreadcrumbId] = useState<string>()
+  const [projectChooserOpen, setProjectChooserOpen] = useState(false)
+
+  const projectBreadcrumbs = useMemo(
+    () => workspace.breadcrumbs.filter(({ projectId }) => projectId === workspace.project.id),
+    [workspace.breadcrumbs, workspace.project.id],
+  )
 
   const ordered = useMemo(
-    () => sortChronologically(workspace.breadcrumbs),
-    [workspace.breadcrumbs],
+    () => sortChronologically(projectBreadcrumbs),
+    [projectBreadcrumbs],
   )
   const hasHistory = ordered.length > 0
   const latestBreadcrumb = ordered.at(-1)
@@ -693,12 +798,12 @@ export default function App() {
     [ordered, workspace.project.currentGoal],
   )
   const story = useMemo(
-    () => deriveStory(workspace.project, workspace.breadcrumbs),
-    [workspace],
+    () => deriveStory(workspace.project, projectBreadcrumbs),
+    [workspace.project, projectBreadcrumbs],
   )
   const openThreads = useMemo(
-    () => deriveOpenThreads(workspace.project, workspace.breadcrumbs),
-    [workspace.project, workspace.breadcrumbs],
+    () => deriveOpenThreads(workspace.project, projectBreadcrumbs),
+    [workspace.project, projectBreadcrumbs],
   )
 
   useEffect(() => {
@@ -765,6 +870,22 @@ export default function App() {
     setCaptureOpen(true)
   }
 
+  function selectProject(projectId: string) {
+    setWorkspace((current) => openProject(current, projectId))
+    setProjectChooserOpen(false)
+    setView('overview')
+    setTracedBreadcrumbId(undefined)
+  }
+
+  function addProject(project: Project) {
+    setWorkspace((current) => createProject(current, project))
+    setProjectChooserOpen(false)
+    setView('overview')
+    setTracedBreadcrumbId(undefined)
+    setSavedMessage('New project created — ready for its first breadcrumb')
+    window.setTimeout(() => setSavedMessage(''), 3000)
+  }
+
   function saveBreadcrumb(breadcrumb: Breadcrumb) {
     if (!editingBreadcrumb) {
       addBreadcrumb(breadcrumb)
@@ -799,10 +920,16 @@ export default function App() {
         <a className="wordmark" href="#top" onClick={() => changeView('overview')}>
           Breadcrumb
         </a>
-        <div className="sidebar-project">
+        <button
+          aria-haspopup="dialog"
+          className="sidebar-project"
+          onClick={() => setProjectChooserOpen(true)}
+          type="button"
+        >
           <span>Project</span>
           <strong>{workspace.project.name}</strong>
-        </div>
+          <small>Switch or create</small>
+        </button>
         <nav aria-label="Project navigation">
           <button
             aria-current={view === 'overview' ? 'page' : undefined}
@@ -928,7 +1055,7 @@ export default function App() {
 
             {openThreads.length > 0 && (
               <OpenThreads
-                breadcrumbs={workspace.breadcrumbs}
+                breadcrumbs={projectBreadcrumbs}
                 onEdit={openBreadcrumbForm}
                 onTrace={showSource}
                 threads={openThreads}
@@ -1030,14 +1157,14 @@ export default function App() {
                       <p className="story-body">{section.body}</p>
                       {section.beats && (
                         <StorySequence
-                          breadcrumbs={workspace.breadcrumbs}
+                          breadcrumbs={projectBreadcrumbs}
                           onTrace={showSource}
                           section={section}
                         />
                       )}
                       {!section.beats && (
                         <StoryEvidence
-                          breadcrumbs={workspace.breadcrumbs}
+                          breadcrumbs={projectBreadcrumbs}
                           onTrace={showSource}
                           sourceIds={section.sourceIds}
                         />
@@ -1061,13 +1188,23 @@ export default function App() {
 
       {captureOpen && (
         <CaptureForm
-          breadcrumbs={workspace.breadcrumbs}
+          breadcrumbs={projectBreadcrumbs}
           currentGoal={workspace.project.currentGoal}
           editingBreadcrumb={editingBreadcrumb}
           onClose={closeBreadcrumbForm}
           onSave={saveBreadcrumb}
           projectId={workspace.project.id}
-          requiresGoal={editingBreadcrumb?.id === currentGoalSource?.id}
+          requiresGoal={requiresGoalForEdit(editingBreadcrumb?.id, currentGoalSource?.id)}
+        />
+      )}
+
+      {projectChooserOpen && (
+        <ProjectChooser
+          currentProjectId={workspace.project.id}
+          onClose={() => setProjectChooserOpen(false)}
+          onCreate={addProject}
+          onOpen={selectProject}
+          projects={workspace.projects}
         />
       )}
 

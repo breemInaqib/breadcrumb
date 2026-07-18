@@ -32,5 +32,6 @@ export interface Breadcrumb {
 
 export interface Workspace {
   project: Project
+  projects: Project[]
   breadcrumbs: Breadcrumb[]
 }

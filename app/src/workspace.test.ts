@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { seedWorkspace } from './data'
 import type { Breadcrumb } from './types'
 import {
+  createProject,
   getEligiblePredecessors,
+  openProject,
   recordBreadcrumb,
+  requiresGoalForEdit,
   updateBreadcrumb,
 } from './workspace'
 
@@ -18,6 +21,29 @@ function makeBreadcrumb(overrides: Partial<Breadcrumb> = {}): Breadcrumb {
 }
 
 describe('project workspace', () => {
+  it('creates and opens a separate project without mixing its history', () => {
+    const project = {
+      id: 'field-notes',
+      name: 'Field Notes',
+      description: 'A small research memory.',
+      currentGoal: 'Capture the first discovery.',
+      createdAt: '2026-07-18T12:00:00.000Z',
+    }
+    const created = createProject(seedWorkspace, project)
+
+    expect(created.project).toBe(project)
+    expect(created.projects).toHaveLength(2)
+    expect(openProject(created, 'patchwork').project.name).toBe('Patchwork')
+    expect(openProject(created, 'field-notes').breadcrumbs).toEqual(seedWorkspace.breadcrumbs)
+  })
+
+  it('only requires a goal when editing the breadcrumb that set it', () => {
+    expect(requiresGoalForEdit(undefined, undefined)).toBe(false)
+    expect(requiresGoalForEdit(undefined, 'b6')).toBe(false)
+    expect(requiresGoalForEdit('b6', 'b6')).toBe(true)
+    expect(requiresGoalForEdit('b5', 'b6')).toBe(false)
+  })
+
   it('records a breadcrumb without changing the current goal by default', () => {
     const updated = recordBreadcrumb(seedWorkspace, makeBreadcrumb())
 
@@ -68,7 +94,7 @@ describe('project workspace', () => {
 
   it('keeps later goal transitions authoritative when older history is corrected', () => {
     const laterGoal = makeBreadcrumb({
-      id: 'b7',
+      id: 'b8',
       nextGoal: 'Prepare the validated preview pattern for release.',
     })
     const withLaterGoal = recordBreadcrumb(seedWorkspace, laterGoal)

@@ -145,6 +145,24 @@ export function deriveStory(
     })
   }
 
+  const unresolved = ordered
+    .filter(({ outcome }) => !outcome.trim())
+    .slice(-2)
+
+  if (unresolved.length > 0) {
+    sections.push({
+      id: 'unresolved',
+      eyebrow: 'What still needs attention',
+      title: unresolved.length === 1
+        ? 'One recorded thread has no outcome yet'
+        : `${unresolved.length} recorded threads have no outcome yet`,
+      body: unresolved.length === 1
+        ? `“${unresolved[0].title}” is recorded, but its consequence is not. Breadcrumb cannot yet say what it led to.`
+        : 'These moments are recorded without consequences. Breadcrumb cannot infer what they led to.',
+      sourceIds: unresolved.map(({ id }) => id),
+    })
+  }
+
   sections.push({
     id: 'current-state',
     eyebrow: 'Where the project is now',

@@ -1,4 +1,38 @@
-import type { Breadcrumb, Workspace } from './types'
+import type { Breadcrumb, Project, Workspace } from './types'
+
+function withActiveProject(workspace: Workspace, project: Project): Workspace {
+  return {
+    ...workspace,
+    project,
+    projects: workspace.projects.map((candidate) =>
+      candidate.id === project.id ? project : candidate,
+    ),
+  }
+}
+
+export function createProject(workspace: Workspace, project: Project): Workspace {
+  return {
+    ...workspace,
+    project,
+    projects: [...workspace.projects, project],
+  }
+}
+
+export function openProject(workspace: Workspace, projectId: string): Workspace {
+  const project = workspace.projects.find((candidate) => candidate.id === projectId)
+  return project ? { ...workspace, project } : workspace
+}
+
+export function requiresGoalForEdit(
+  editingBreadcrumbId: string | undefined,
+  currentGoalSourceId: string | undefined,
+) {
+  return Boolean(
+    editingBreadcrumbId &&
+      currentGoalSourceId &&
+      editingBreadcrumbId === currentGoalSourceId,
+  )
+}
 
 export function getEligiblePredecessors(
   breadcrumbs: Breadcrumb[],
@@ -39,8 +73,7 @@ export function recordBreadcrumb(
     : workspace.project
 
   return {
-    ...workspace,
-    project,
+    ...withActiveProject(workspace, project),
     breadcrumbs: [...workspace.breadcrumbs, breadcrumb],
   }
 }
@@ -61,11 +94,12 @@ export function updateBreadcrumb(
     .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))[0]
     ?.nextGoal
 
+  const project = latestGoal
+    ? { ...workspace.project, currentGoal: latestGoal }
+    : workspace.project
+
   return {
-    ...workspace,
-    project: latestGoal
-      ? { ...workspace.project, currentGoal: latestGoal }
-      : workspace.project,
+    ...withActiveProject(workspace, project),
     breadcrumbs,
   }
 }

@@ -6,23 +6,27 @@ describe('project story', () => {
   it('orders breadcrumbs by their occurrence time', () => {
     const reversed = [...seedWorkspace.breadcrumbs].reverse()
     expect(sortChronologically(reversed)[0].id).toBe('b1')
-    expect(sortChronologically(reversed).at(-1)?.id).toBe('b6')
+    expect(sortChronologically(reversed).at(-1)?.id).toBe('b7')
   })
 
   it('derives traceable sections from existing breadcrumbs', () => {
     const story = deriveStory(seedWorkspace.project, seedWorkspace.breadcrumbs)
 
-    expect(story).toHaveLength(3)
+    expect(story).toHaveLength(4)
     expect(story.every((section) => section.sourceIds.length > 0)).toBe(true)
     expect(story[1].beats?.map(({ relation }) => relation)).toEqual([
-      'Tried',
       'Learned',
       'Changed',
+      'Tried',
     ])
     expect(story[1].beats?.map(({ sourceId }) => sourceId)).toEqual(
       story[1].sourceIds,
     )
     expect(story.at(-1)?.title).toBe(seedWorkspace.project.currentGoal)
+    expect(story[2]).toMatchObject({
+      id: 'unresolved',
+      sourceIds: ['b7'],
+    })
   })
 
   it('keeps a one-moment history to one honest story section', () => {
@@ -59,7 +63,7 @@ describe('project story', () => {
   it('includes a newly recorded turning point in the story', () => {
     const newBreadcrumb = {
       ...seedWorkspace.breadcrumbs[0],
-      id: 'b7',
+      id: 'b8',
       type: 'Discovery' as const,
       title: 'Pilot users revisit previews before publishing',
       occurredAt: '2026-07-18T12:00:00.000Z',
@@ -69,13 +73,13 @@ describe('project story', () => {
       newBreadcrumb,
     ])
 
-    expect(story.some((section) => section.sourceIds.includes('b7'))).toBe(true)
+    expect(story.some((section) => section.sourceIds.includes('b8'))).toBe(true)
   })
 
   it('follows the latest explicit causal thread as history grows', () => {
     const laterDiscovery = {
       ...seedWorkspace.breadcrumbs[0],
-      id: 'b7',
+      id: 'b8',
       buildsOnId: 'b6',
       type: 'Discovery' as const,
       title: 'Preview reveals unclear transitions',
@@ -83,8 +87,8 @@ describe('project story', () => {
     }
     const laterChange = {
       ...seedWorkspace.breadcrumbs[0],
-      id: 'b8',
-      buildsOnId: 'b7',
+      id: 'b9',
+      buildsOnId: 'b8',
       type: 'Change' as const,
       title: 'Add transition guidance to the composer',
       occurredAt: '2026-07-18T13:00:00.000Z',
@@ -104,14 +108,14 @@ describe('project story', () => {
     ])
     expect(story[1].sequenceLabel).toBe('Recorded causal thread')
     expect(story[1].sequenceKind).toBe('recorded')
-    expect(story.at(-1)?.sourceIds).toEqual(['b6', 'b7', 'b8'])
+    expect(story.at(-1)?.sourceIds).toEqual(['b6', 'b8', 'b9'])
   })
 
   it('keeps the current goal supported by the breadcrumb that set it', () => {
     const nextGoal = 'Validate transition guidance with the next pilot group.'
     const goalChange = {
       ...seedWorkspace.breadcrumbs[0],
-      id: 'b7',
+      id: 'b8',
       buildsOnId: 'b6',
       nextGoal,
       type: 'Change' as const,
@@ -119,15 +123,15 @@ describe('project story', () => {
     }
     const laterExperiment = {
       ...seedWorkspace.breadcrumbs[0],
-      id: 'b8',
-      buildsOnId: 'b7',
+      id: 'b9',
+      buildsOnId: 'b8',
       type: 'Experiment' as const,
       occurredAt: '2026-07-19T12:00:00.000Z',
     }
     const laterDiscovery = {
       ...seedWorkspace.breadcrumbs[0],
-      id: 'b9',
-      buildsOnId: 'b8',
+      id: 'b10',
+      buildsOnId: 'b9',
       type: 'Discovery' as const,
       occurredAt: '2026-07-20T12:00:00.000Z',
     }
@@ -139,7 +143,7 @@ describe('project story', () => {
       laterDiscovery,
     ])
 
-    expect(story.at(-1)?.sourceIds).toEqual(['b7', 'b8', 'b9'])
+    expect(story.at(-1)?.sourceIds).toEqual(['b8', 'b9', 'b10'])
   })
 
   it('uses recent chronology when explicit links are unavailable', () => {
@@ -151,7 +155,7 @@ describe('project story', () => {
     const thread = selectStoryThread(legacyBreadcrumbs, currentSourceIds)
 
     expect(thread.connected).toBe(false)
-    expect(thread.breadcrumbs.map(({ id }) => id)).toEqual(['b2', 'b3', 'b4'])
+    expect(thread.breadcrumbs.map(({ id }) => id)).toEqual(['b3', 'b4', 'b7'])
 
     const story = deriveStory(seedWorkspace.project, legacyBreadcrumbs)
     expect(story[1].sequenceLabel).toBe('Chronological context')
@@ -167,7 +171,7 @@ describe('project story', () => {
     const thread = selectStoryThread(breadcrumbs, ['b5', 'b6'])
 
     expect(thread.connected).toBe(false)
-    expect(thread.breadcrumbs.map(({ id }) => id)).toEqual(['b2', 'b3', 'b4'])
+    expect(thread.breadcrumbs.map(({ id }) => id)).toEqual(['b3', 'b4', 'b7'])
   })
 
   it('keeps explicit causal links resolvable and chronological', () => {

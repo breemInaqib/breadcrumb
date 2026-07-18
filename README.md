@@ -8,11 +8,11 @@ This repository deliberately does not contain task management, analytics, assign
 
 The runnable application lives in `app/` and demonstrates one complete project-memory loop:
 
-1. Open the seeded Patchwork project and understand its current goal.
-2. Browse its meaningful moments in chronological order.
-3. Add a breadcrumb that preserves what happened and why.
-4. See the project history update and persist in the browser.
-5. Read a derived “Story so far.”
+1. Open the seeded Patchwork project or create a separate local project memory.
+2. Browse meaningful moments in chronological order.
+3. Add a breadcrumb that preserves what happened, why, its outcome, and supporting links.
+4. Connect a later breadcrumb to the earlier moment that prompted it.
+5. Read a derived “Story so far,” including explicitly incomplete threads.
 6. Follow each narrative citation back to its supporting breadcrumb.
 
 The story is derived locally from the project’s breadcrumbs. It does not require an API key or expose a model-generated claim without source references.
@@ -42,15 +42,15 @@ npm run build
 ## Implementation
 
 - React, TypeScript, and Vite
-- one seeded `Project` and six believable `Breadcrumb` records
+- locally persisted project switching and creation, with each project’s history kept separate
+- one seeded `Patchwork` project with seven believable `Breadcrumb` records
 - browser `localStorage` under `breadcrumb.project-workspace.v1`
 - deterministic story derivation with breadcrumb citations
 - responsive, keyboard-accessible project workspace and capture drawer
 
 ## Prototype limits
 
-- one fixed project workspace; projects cannot yet be created or edited
-- browser-local persistence only, with no collaboration or cross-device sync
+- projects are browser-local; there is no remote join, collaboration, or cross-device sync
 - deterministic narrative synthesis rather than model-backed generation
 - external source links can be captured but are not fetched or validated beyond allowing HTTP(S) URLs
 - no authentication, permissions, integrations, or automatic ingestion
