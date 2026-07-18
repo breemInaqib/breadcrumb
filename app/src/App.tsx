@@ -444,7 +444,7 @@ function ProjectChooser({
         <div className="drawer-header">
           <div>
             <p className="eyebrow">Your local project memory</p>
-            <h2 id="project-chooser-title">Open or create a project</h2>
+            <h2 id="project-chooser-title">Projects</h2>
             <p>Each project keeps its own breadcrumbs, evidence, and derived story.</p>
           </div>
           <button className="icon-button" onClick={onClose} type="button">
@@ -454,7 +454,11 @@ function ProjectChooser({
         </div>
 
         <div className="project-chooser-body">
-          <div className="project-list" aria-label="Available projects">
+          <section aria-labelledby="open-project-heading" className="project-list">
+            <div className="project-section-heading">
+              <p className="eyebrow">Continue an existing memory</p>
+              <h3 id="open-project-heading">Open a project</h3>
+            </div>
             {projects.map((project) => (
               <button
                 aria-current={project.id === currentProjectId ? 'true' : undefined}
@@ -468,7 +472,7 @@ function ProjectChooser({
                 <small>{project.currentGoal}</small>
               </button>
             ))}
-          </div>
+          </section>
 
           <form className="project-form" onSubmit={handleSubmit}>
             <p className="eyebrow">Start a new memory</p>

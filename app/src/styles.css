@@ -122,9 +122,13 @@ a {
 }
 
 .sidebar-project strong {
+  display: block;
+  overflow: hidden;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 19px;
   font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-project small {
@@ -208,6 +212,7 @@ main {
   font-weight: 500;
   letter-spacing: -0.035em;
   line-height: 0.98;
+  overflow-wrap: anywhere;
 }
 
 .project-description {
@@ -1132,6 +1137,14 @@ textarea:focus-visible {
   align-content: start;
 }
 
+.project-section-heading h3,
+.project-form h3 {
+  margin: 4px 0 4px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  font-weight: 500;
+}
+
 .project-choice {
   display: flex;
   min-height: 122px;
@@ -1161,7 +1174,12 @@ textarea:focus-visible {
 }
 
 .project-choice strong,
-.project-form h3 {
+.project-choice small {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.project-choice strong {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 22px;
   font-weight: 500;
@@ -1182,7 +1200,7 @@ textarea:focus-visible {
 }
 
 .project-form h3 {
-  margin: -8px 0 4px;
+  margin-top: -8px;
 }
 
 .project-form label {
@@ -1478,16 +1496,37 @@ textarea:focus-visible {
     display: grid;
     width: 100%;
     height: auto;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
     align-items: center;
     padding: 18px 20px;
     border-right: 0;
     border-bottom: 1px solid var(--rule);
   }
 
-  .sidebar-project,
   .sidebar-note {
     display: none;
+  }
+
+  .wordmark {
+    font-size: 20px;
+  }
+
+  .sidebar-project {
+    display: flex;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .sidebar-project span,
+  .sidebar-project small {
+    display: none;
+  }
+
+  .sidebar-project strong {
+    max-width: 118px;
+    font-size: 15px;
   }
 
   .project-chooser {
@@ -1517,6 +1556,7 @@ textarea:focus-visible {
   .sidebar nav button {
     width: auto;
     padding: 8px;
+    font-size: 0;
   }
 
   .sidebar nav button svg,
@@ -1682,6 +1722,23 @@ textarea:focus-visible {
   .drawer-actions {
     margin: 0 -20px;
     padding: 14px 20px 18px;
+  }
+}
+
+@media (max-width: 360px) {
+  .sidebar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 6px;
+    padding-block: 12px;
+  }
+
+  .sidebar-project {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .sidebar-project strong {
+    max-width: 100%;
   }
 }
 
