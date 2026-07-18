@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Environment variables
+.env
+.env.*
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+
+# Editor files
+.zed/
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.swp
