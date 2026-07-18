@@ -238,6 +238,7 @@ export default function App() {
     () => sortChronologically(workspace.breadcrumbs),
     [workspace.breadcrumbs],
   )
+  const latestBreadcrumb = ordered.at(-1)
   const story = useMemo(
     () => deriveStory(workspace.project, workspace.breadcrumbs),
     [workspace],
@@ -342,6 +343,27 @@ export default function App() {
                   Add breadcrumb
                 </button>
                 <p>Capture a decision, change, experiment, discovery, or milestone.</p>
+                {latestBreadcrumb && (
+                  <aside className="resume-context" aria-labelledby="resume-heading">
+                    <div className="resume-meta">
+                      <span id="resume-heading">Where things stand</span>
+                      <time dateTime={latestBreadcrumb.occurredAt}>
+                        {formatDate(latestBreadcrumb.occurredAt)}
+                      </time>
+                    </div>
+                    <TypeLabel type={latestBreadcrumb.type} />
+                    <h2>{latestBreadcrumb.title}</h2>
+                    <p>
+                      {latestBreadcrumb.outcome || latestBreadcrumb.whatHappened}
+                    </p>
+                    <button
+                      className="text-button"
+                      onClick={() => showSource(latestBreadcrumb.id)}
+                    >
+                      Trace this moment <ArrowRight size={15} aria-hidden="true" />
+                    </button>
+                  </aside>
+                )}
               </div>
             </header>
 

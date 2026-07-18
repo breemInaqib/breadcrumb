@@ -15,3 +15,7 @@ The repository had no existing AI integration or server boundary. Deterministic 
 ## Keep one reading-oriented workspace
 
 The interface uses Overview, History, and Story views around one project. It intentionally avoids dashboard metrics, task surfaces, and other project-management patterns that would dilute the central product idea.
+
+## Derive resumption context from the latest breadcrumb
+
+The overview pairs the current goal with a compact “Where things stand” cue derived from the newest breadcrumb. It exposes the latest outcome above the fold and links back to the source moment, improving project resumption without introducing status fields or a separate progress model.

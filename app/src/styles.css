@@ -241,6 +241,44 @@ main {
   line-height: 1.55;
 }
 
+.resume-context {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.resume-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 11px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.resume-context h2 {
+  margin: 10px 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+.resume-context > p {
+  margin-top: 8px;
+  color: #615951;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.resume-context .text-button {
+  margin-top: 7px;
+}
+
 .button-primary,
 .button-secondary,
 .text-button,
