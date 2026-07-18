@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { StoryEvidence, Timeline } from './App'
+import { StoryEvidence, StorySequence, Timeline } from './App'
 import { seedWorkspace } from './data'
+import { deriveStory } from './story'
 
 describe('project timeline', () => {
   it('names the resulting goal on the breadcrumb that changed it', () => {
@@ -77,5 +78,24 @@ describe('project timeline', () => {
     expect(html).toContain(
       `aria-label="Builds on ${predecessor.title}; trace earlier breadcrumb"`,
     )
+  })
+
+  it('names the visible and accessible basis of a Story sequence', () => {
+    const section = deriveStory(
+      seedWorkspace.project,
+      seedWorkspace.breadcrumbs,
+    )[1]
+    const html = renderToStaticMarkup(
+      <StorySequence
+        breadcrumbs={seedWorkspace.breadcrumbs}
+        onTrace={() => undefined}
+        section={section}
+      />,
+    )
+
+    expect(html).toContain('Sequence basis')
+    expect(html).toContain('Recorded causal thread')
+    expect(html).toContain('data-sequence-kind="recorded"')
+    expect(html).toContain('aria-labelledby="story-sequence-turning-point"')
   })
 })

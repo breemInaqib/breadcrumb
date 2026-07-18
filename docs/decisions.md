@@ -60,3 +60,7 @@ History offers a quiet edit action on each breadcrumb and reuses the capture dra
 ## Keep causal links visible in Story evidence
 
 Story citations show a supporting breadcrumb’s recorded predecessor directly beneath it and make that relationship traceable to History. This preserves the immediate “builds on” context at section boundaries and inside the current state without inventing links between otherwise unrelated moments or adding a separate graph view.
+
+## Name the basis of every Story sequence
+
+The middle Story section visibly identifies its sequence as either a **Recorded causal thread** or **Chronological context**. The same text names the sequence for assistive technology. This keeps chronological fallback useful while preventing nearby moments from being mistaken for relationships the team actually recorded.

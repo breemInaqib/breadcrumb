@@ -72,6 +72,7 @@ describe('project story', () => {
       'Tried',
     ])
     expect(story[1].sequenceLabel).toBe('Recorded causal thread')
+    expect(story[1].sequenceKind).toBe('recorded')
     expect(story.at(-1)?.sourceIds).toEqual(['b6', 'b7', 'b8'])
   })
 
@@ -120,6 +121,10 @@ describe('project story', () => {
 
     expect(thread.connected).toBe(false)
     expect(thread.breadcrumbs.map(({ id }) => id)).toEqual(['b2', 'b3', 'b4'])
+
+    const story = deriveStory(seedWorkspace.project, legacyBreadcrumbs)
+    expect(story[1].sequenceLabel).toBe('Chronological context')
+    expect(story[1].sequenceKind).toBe('chronological')
   })
 
   it('falls back safely when causal links form a cycle', () => {

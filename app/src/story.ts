@@ -13,6 +13,7 @@ export interface StorySection {
   body: string
   sourceIds: string[]
   beats?: StoryBeat[]
+  sequenceKind?: 'recorded' | 'chronological'
   sequenceLabel?: string
 }
 
@@ -125,7 +126,8 @@ export function deriveStory(
       })),
       sequenceLabel: storyThread.connected
         ? 'Recorded causal thread'
-        : 'Recent project sequence',
+        : 'Chronological context',
+      sequenceKind: storyThread.connected ? 'recorded' : 'chronological',
     })
   }
 

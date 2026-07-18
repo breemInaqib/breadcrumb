@@ -12,7 +12,11 @@ import {
 } from 'lucide-react'
 import { breadcrumbTypes, type Breadcrumb, type BreadcrumbType } from './types'
 import { loadWorkspace, saveWorkspace } from './storage'
-import { deriveStory, sortChronologically } from './story'
+import {
+  deriveStory,
+  sortChronologically,
+  type StorySection,
+} from './story'
 import { formatSourceLinkLabel, parseSourceLinks } from './source-links'
 import {
   getEligiblePredecessors,
@@ -206,6 +210,60 @@ export function StoryEvidence({
         })}
       </ul>
     </div>
+  )
+}
+
+interface StorySequenceProps {
+  breadcrumbs: Breadcrumb[]
+  onTrace: (breadcrumbId: string) => void
+  section: StorySection
+}
+
+export function StorySequence({
+  breadcrumbs,
+  onTrace,
+  section,
+}: StorySequenceProps) {
+  if (!section.beats) return null
+  const labelId = `story-sequence-${section.id}`
+  const sequenceLabel = section.sequenceLabel ?? 'Project sequence'
+
+  return (
+    <>
+      <p
+        className="story-sequence-provenance"
+        data-sequence-kind={section.sequenceKind}
+        id={labelId}
+      >
+        <span>Sequence basis</span>
+        <strong>{sequenceLabel}</strong>
+      </p>
+      <ol aria-labelledby={labelId} className="story-beats">
+        {section.beats.map((beat) => {
+          const source = breadcrumbs.find(({ id }) => id === beat.sourceId)
+          if (!source) return null
+          return (
+            <li className="story-beat" key={beat.sourceId}>
+              <div className="story-beat-relation">{beat.relation}</div>
+              <div>
+                <div className="story-beat-heading">
+                  <TypeLabel type={source.type} />
+                  <h3>{source.title}</h3>
+                </div>
+                <p>{beat.summary}</p>
+                <button
+                  aria-label={`Trace ${source.title} in project history`}
+                  onClick={() => onTrace(source.id)}
+                >
+                  Trace source
+                  <ArrowRight size={13} aria-hidden="true" />
+                </button>
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+    </>
   )
 }
 
@@ -765,36 +823,11 @@ export default function App() {
                     <h2>{section.title}</h2>
                     <p className="story-body">{section.body}</p>
                     {section.beats && (
-                      <ol
-                        className="story-beats"
-                        aria-label={section.sequenceLabel ?? 'Project sequence'}
-                      >
-                        {section.beats.map((beat) => {
-                          const source = workspace.breadcrumbs.find(
-                            ({ id }) => id === beat.sourceId,
-                          )
-                          if (!source) return null
-                          return (
-                            <li className="story-beat" key={beat.sourceId}>
-                              <div className="story-beat-relation">{beat.relation}</div>
-                              <div>
-                                <div className="story-beat-heading">
-                                  <TypeLabel type={source.type} />
-                                  <h3>{source.title}</h3>
-                                </div>
-                                <p>{beat.summary}</p>
-                                <button
-                                  aria-label={`Trace ${source.title} in project history`}
-                                  onClick={() => showSource(source.id)}
-                                >
-                                  Trace source
-                                  <ArrowRight size={13} aria-hidden="true" />
-                                </button>
-                              </div>
-                            </li>
-                          )
-                        })}
-                      </ol>
+                      <StorySequence
+                        breadcrumbs={workspace.breadcrumbs}
+                        onTrace={showSource}
+                        section={section}
+                      />
                     )}
                     {!section.beats && (
                       <StoryEvidence
