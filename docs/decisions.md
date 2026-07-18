@@ -27,3 +27,7 @@ The middle of Story so far derives a **Tried → Learned → Changed** sequence 
 ## Keep capture depth and completion visible
 
 The capture drawer gives the context fields their own scroll area while keeping Cancel and Save visible. This preserves the meaningful “what / why / outcome” structure instead of shortening the form to fit a viewport, while making the completion point predictable.
+
+## Record one causal predecessor
+
+A breadcrumb may optionally name the earlier breadcrumb it builds on. The timeline exposes that one-hop connection as a trace action, making the path between consequential moments explicit without creating a dependency graph, a separate relationship entity, or an additional view.

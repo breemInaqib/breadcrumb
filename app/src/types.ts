@@ -19,6 +19,7 @@ export interface Project {
 export interface Breadcrumb {
   id: string
   projectId: string
+  buildsOnId?: string
   type: BreadcrumbType
   title: string
   whatHappened: string

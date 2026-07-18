@@ -28,6 +28,7 @@ export const seedWorkspace: Workspace = {
     {
       id: 'b2',
       projectId: 'patchwork',
+      buildsOnId: 'b1',
       type: 'Experiment',
       title: 'Test templates with five product teams',
       whatHappened:
@@ -42,6 +43,7 @@ export const seedWorkspace: Workspace = {
     {
       id: 'b3',
       projectId: 'patchwork',
+      buildsOnId: 'b2',
       type: 'Discovery',
       title: 'Teams needed composition, not more templates',
       whatHappened:
@@ -56,6 +58,7 @@ export const seedWorkspace: Workspace = {
     {
       id: 'b4',
       projectId: 'patchwork',
+      buildsOnId: 'b3',
       type: 'Change',
       title: 'Replace templates with a section composer',
       whatHappened:
@@ -70,6 +73,7 @@ export const seedWorkspace: Workspace = {
     {
       id: 'b5',
       projectId: 'patchwork',
+      buildsOnId: 'b4',
       type: 'Experiment',
       title: 'Compare modal and inline previews',
       whatHappened:
@@ -84,6 +88,7 @@ export const seedWorkspace: Workspace = {
     {
       id: 'b6',
       projectId: 'patchwork',
+      buildsOnId: 'b5',
       type: 'Milestone',
       title: 'Launch the pilot with twelve makers',
       whatHappened:

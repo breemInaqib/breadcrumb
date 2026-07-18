@@ -40,4 +40,18 @@ describe('project story', () => {
 
     expect(story.some((section) => section.sourceIds.includes('b7'))).toBe(true)
   })
+
+  it('keeps explicit causal links resolvable and chronological', () => {
+    const byId = new Map(seedWorkspace.breadcrumbs.map((breadcrumb) => [breadcrumb.id, breadcrumb]))
+
+    seedWorkspace.breadcrumbs.forEach((breadcrumb) => {
+      if (!breadcrumb.buildsOnId) return
+      const predecessor = byId.get(breadcrumb.buildsOnId)
+
+      expect(predecessor).toBeDefined()
+      expect(new Date(predecessor!.occurredAt).getTime()).toBeLessThanOrEqual(
+        new Date(breadcrumb.occurredAt).getTime(),
+      )
+    })
+  })
 })

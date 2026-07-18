@@ -48,67 +48,87 @@ function TypeLabel({ type }: { type: BreadcrumbType }) {
 interface TimelineProps {
   breadcrumbs: Breadcrumb[]
   limit?: number
+  onTrace?: (breadcrumbId: string) => void
 }
 
-function Timeline({ breadcrumbs, limit }: TimelineProps) {
+function Timeline({ breadcrumbs, limit, onTrace }: TimelineProps) {
   const ordered = sortChronologically(breadcrumbs)
   const visible = limit ? ordered.slice(-limit) : ordered
 
   return (
     <ol className="timeline" aria-label="Project history">
-      {visible.map((breadcrumb) => (
-        <li className="timeline-entry" id={`breadcrumb-${breadcrumb.id}`} key={breadcrumb.id}>
-          <div className="timeline-date">
-            <time dateTime={breadcrumb.occurredAt}>{formatDate(breadcrumb.occurredAt)}</time>
-          </div>
-          <div className="timeline-marker" aria-hidden="true" />
-          <article className="timeline-content">
-            <div className="entry-heading">
-              <TypeLabel type={breadcrumb.type} />
-              <h3>{breadcrumb.title}</h3>
+      {visible.map((breadcrumb) => {
+        const buildsOn = breadcrumbs.find(({ id }) => id === breadcrumb.buildsOnId)
+
+        return (
+          <li className="timeline-entry" id={`breadcrumb-${breadcrumb.id}`} key={breadcrumb.id}>
+            <div className="timeline-date">
+              <time dateTime={breadcrumb.occurredAt}>{formatDate(breadcrumb.occurredAt)}</time>
             </div>
-            <div className="entry-details">
-              <div>
-                <h4>What happened</h4>
-                <p>{breadcrumb.whatHappened}</p>
+            <div className="timeline-marker" aria-hidden="true" />
+            <article className="timeline-content">
+              <div className="entry-heading">
+                <TypeLabel type={breadcrumb.type} />
+                <h3>{breadcrumb.title}</h3>
               </div>
-              <div>
-                <h4>Why it mattered</h4>
-                <p>{breadcrumb.why}</p>
-              </div>
-              {breadcrumb.outcome && (
+              {buildsOn && onTrace && (
+                <button
+                  aria-label={`Builds on ${buildsOn.title}; trace earlier breadcrumb`}
+                  className="causal-link"
+                  onClick={() => onTrace(buildsOn.id)}
+                  type="button"
+                >
+                  <span>Builds on</span>
+                  <TypeLabel type={buildsOn.type} />
+                  <strong>{buildsOn.title}</strong>
+                  <ArrowRight size={13} aria-hidden="true" />
+                </button>
+              )}
+              <div className="entry-details">
                 <div>
-                  <h4>Outcome</h4>
-                  <p>{breadcrumb.outcome}</p>
+                  <h4>What happened</h4>
+                  <p>{breadcrumb.whatHappened}</p>
+                </div>
+                <div>
+                  <h4>Why it mattered</h4>
+                  <p>{breadcrumb.why}</p>
+                </div>
+                {breadcrumb.outcome && (
+                  <div>
+                    <h4>Outcome</h4>
+                    <p>{breadcrumb.outcome}</p>
+                  </div>
+                )}
+              </div>
+              {breadcrumb.sourceLinks.length > 0 && (
+                <div className="source-links">
+                  <span>Sources</span>
+                  {breadcrumb.sourceLinks.map((link, index) => (
+                    <a href={link} key={link} rel="noreferrer" target="_blank">
+                      Source {index + 1}
+                      <ExternalLink size={12} aria-hidden="true" />
+                    </a>
+                  ))}
                 </div>
               )}
-            </div>
-            {breadcrumb.sourceLinks.length > 0 && (
-              <div className="source-links">
-                <span>Sources</span>
-                {breadcrumb.sourceLinks.map((link, index) => (
-                  <a href={link} key={link} rel="noreferrer" target="_blank">
-                    Source {index + 1}
-                    <ExternalLink size={12} aria-hidden="true" />
-                  </a>
-                ))}
-              </div>
-            )}
-          </article>
-        </li>
-      ))}
+            </article>
+          </li>
+        )
+      })}
     </ol>
   )
 }
 
 interface CaptureFormProps {
+  breadcrumbs: Breadcrumb[]
   onClose: () => void
   onSave: (breadcrumb: Breadcrumb) => void
   projectId: string
 }
 
-function CaptureForm({ onClose, onSave, projectId }: CaptureFormProps) {
+function CaptureForm({ breadcrumbs, onClose, onSave, projectId }: CaptureFormProps) {
   const [type, setType] = useState<BreadcrumbType>('Decision')
+  const priorBreadcrumbs = sortChronologically(breadcrumbs).reverse()
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -119,6 +139,7 @@ function CaptureForm({ onClose, onSave, projectId }: CaptureFormProps) {
     onSave({
       id: crypto.randomUUID(),
       projectId,
+      buildsOnId: String(form.get('buildsOnId') ?? '') || undefined,
       type,
       title: String(form.get('title')).trim(),
       whatHappened: String(form.get('whatHappened')).trim(),
@@ -174,6 +195,27 @@ function CaptureForm({ onClose, onSave, projectId }: CaptureFormProps) {
               <span>Short title</span>
               <input autoFocus name="title" placeholder="Name the turning point" required />
             </label>
+
+            <div className="capture-field">
+              <label>
+                <span>Builds on <small>Optional</small></span>
+                <select
+                  aria-describedby="builds-on-helper"
+                  defaultValue=""
+                  name="buildsOnId"
+                >
+                  <option value="">No earlier breadcrumb</option>
+                  {priorBreadcrumbs.map((breadcrumb) => (
+                    <option key={breadcrumb.id} value={breadcrumb.id}>
+                      {breadcrumb.type} — {breadcrumb.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <small className="capture-helper" id="builds-on-helper">
+                Connect this moment to the earlier breadcrumb that prompted it.
+              </small>
+            </div>
 
             <label>
               <span>What happened</span>
@@ -379,7 +421,7 @@ export default function App() {
                   View full history <ArrowRight size={15} aria-hidden="true" />
                 </button>
               </div>
-              <Timeline breadcrumbs={ordered} limit={4} />
+              <Timeline breadcrumbs={ordered} limit={4} onTrace={showSource} />
             </section>
 
             <section className="story-preview">
@@ -412,7 +454,7 @@ export default function App() {
                 Add breadcrumb
               </button>
             </header>
-            <Timeline breadcrumbs={ordered} />
+            <Timeline breadcrumbs={ordered} onTrace={showSource} />
           </section>
         )}
 
@@ -496,6 +538,7 @@ export default function App() {
 
       {captureOpen && (
         <CaptureForm
+          breadcrumbs={workspace.breadcrumbs}
           onClose={() => setCaptureOpen(false)}
           onSave={addBreadcrumb}
           projectId={workspace.project.id}
