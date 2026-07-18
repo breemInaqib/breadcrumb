@@ -23,3 +23,7 @@ The overview pairs the current goal with a compact “Where things stand” cue 
 ## Express the turning point as a causal sequence
 
 The middle of Story so far derives a **Tried → Learned → Changed** sequence from experiment, discovery, and change breadcrumbs. Each beat retains its source ID. This makes causality legible without adding a relationship graph or storing a separate narrative model.
+
+## Keep capture depth and completion visible
+
+The capture drawer gives the context fields their own scroll area while keeping Cancel and Save visible. This preserves the meaningful “what / why / outcome” structure instead of shortening the form to fit a viewport, while making the completion point predictable.

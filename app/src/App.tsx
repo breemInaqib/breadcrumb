@@ -151,67 +151,69 @@ function CaptureForm({ onClose, onSave, projectId }: CaptureFormProps) {
         </div>
 
         <form className="capture-form" onSubmit={handleSubmit}>
-          <fieldset>
-            <legend>Type</legend>
-            <div className="type-options">
-              {breadcrumbTypes.map((item) => (
-                <label className={type === item ? 'selected' : ''} key={item}>
-                  <input
-                    checked={type === item}
-                    name="type"
-                    onChange={() => setType(item)}
-                    type="radio"
-                    value={item}
-                  />
-                  {item}
-                </label>
-              ))}
+          <div className="capture-fields">
+            <fieldset>
+              <legend>Type</legend>
+              <div className="type-options">
+                {breadcrumbTypes.map((item) => (
+                  <label className={type === item ? 'selected' : ''} key={item}>
+                    <input
+                      checked={type === item}
+                      name="type"
+                      onChange={() => setType(item)}
+                      type="radio"
+                      value={item}
+                    />
+                    {item}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <label>
+              <span>Short title</span>
+              <input autoFocus name="title" placeholder="Name the turning point" required />
+            </label>
+
+            <label>
+              <span>What happened</span>
+              <textarea
+                name="whatHappened"
+                placeholder="Describe the meaningful change, decision, or learning."
+                required
+                rows={3}
+              />
+            </label>
+
+            <label>
+              <span>Why it happened</span>
+              <textarea
+                name="why"
+                placeholder="Preserve the reasoning or evidence behind it."
+                required
+                rows={3}
+              />
+            </label>
+
+            <label>
+              <span>Outcome or consequence <small>Optional</small></span>
+              <textarea
+                name="outcome"
+                placeholder="What did this lead to?"
+                rows={2}
+              />
+            </label>
+
+            <div className="form-row">
+              <label>
+                <span>Date</span>
+                <input defaultValue={inputDate} name="occurredAt" required type="date" />
+              </label>
+              <label>
+                <span>Source links <small>Optional</small></span>
+                <input name="sourceLinks" placeholder="Paste links, separated by commas" type="text" />
+              </label>
             </div>
-          </fieldset>
-
-          <label>
-            <span>Short title</span>
-            <input autoFocus name="title" placeholder="Name the turning point" required />
-          </label>
-
-          <label>
-            <span>What happened</span>
-            <textarea
-              name="whatHappened"
-              placeholder="Describe the meaningful change, decision, or learning."
-              required
-              rows={3}
-            />
-          </label>
-
-          <label>
-            <span>Why it happened</span>
-            <textarea
-              name="why"
-              placeholder="Preserve the reasoning or evidence behind it."
-              required
-              rows={3}
-            />
-          </label>
-
-          <label>
-            <span>Outcome or consequence <small>Optional</small></span>
-            <textarea
-              name="outcome"
-              placeholder="What did this lead to?"
-              rows={2}
-            />
-          </label>
-
-          <div className="form-row">
-            <label>
-              <span>Date</span>
-              <input defaultValue={inputDate} name="occurredAt" required type="date" />
-            </label>
-            <label>
-              <span>Source links <small>Optional</small></span>
-              <input name="sourceLinks" placeholder="Paste links, separated by commas" type="text" />
-            </label>
           </div>
 
           <div className="drawer-actions">
