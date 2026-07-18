@@ -23,6 +23,7 @@ import {
   recordBreadcrumb,
   updateBreadcrumb,
 } from './workspace'
+import { deriveOpenThreads, type OpenThread } from './home'
 
 type View = 'overview' | 'history' | 'story'
 
@@ -264,6 +265,99 @@ export function StorySequence({
         })}
       </ol>
     </>
+  )
+}
+
+interface OpenThreadsProps {
+  onEdit?: (breadcrumb: Breadcrumb) => void
+  onTrace: (breadcrumbId: string) => void
+  threads: OpenThread[]
+  breadcrumbs: Breadcrumb[]
+}
+
+function OpenThreads({
+  onEdit,
+  onTrace,
+  threads,
+  breadcrumbs,
+}: OpenThreadsProps) {
+  return (
+    <section className="open-threads" aria-labelledby="open-threads-heading">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Context that has not closed yet</p>
+          <h2 id="open-threads-heading">Open threads</h2>
+        </div>
+        <p className="section-note">
+          Derived from the current goal and moments without a recorded outcome.
+        </p>
+      </div>
+      <div className="thread-list">
+        {threads.map((thread) => {
+          const source = thread.sourceId
+            ? breadcrumbs.find(({ id }) => id === thread.sourceId)
+            : undefined
+
+          return (
+            <article className="thread-card" key={thread.id}>
+              <p className="eyebrow">{thread.label}</p>
+              <h3>{thread.title}</h3>
+              <p>{thread.detail}</p>
+              {source && (
+                <button
+                  className="text-button"
+                  onClick={() => {
+                    if (thread.label === 'Needs an outcome' && onEdit) {
+                      onEdit(source)
+                      return
+                    }
+                    onTrace(source.id)
+                  }}
+                >
+                  {thread.label === 'Needs an outcome'
+                    ? 'Record the outcome'
+                    : 'Review the source'}
+                  <ArrowRight size={15} aria-hidden="true" />
+                </button>
+              )}
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+interface RecentProgressProps {
+  breadcrumbs: Breadcrumb[]
+  onTrace: (breadcrumbId: string) => void
+}
+
+function RecentProgress({ breadcrumbs, onTrace }: RecentProgressProps) {
+  const recent = sortChronologically(breadcrumbs).slice(-3).reverse()
+
+  return (
+    <ol className="recent-progress-list" aria-label="Recent progress">
+      {recent.map((breadcrumb) => (
+        <li className="recent-progress-item" key={breadcrumb.id}>
+          <div className="recent-progress-meta">
+            <TypeLabel type={breadcrumb.type} />
+            <time dateTime={breadcrumb.occurredAt}>{formatDate(breadcrumb.occurredAt)}</time>
+          </div>
+          <div className="recent-progress-copy">
+            <h3>{breadcrumb.title}</h3>
+            <p>{breadcrumb.outcome || breadcrumb.whatHappened}</p>
+          </div>
+          <button
+            aria-label={`Review ${breadcrumb.title}`}
+            className="text-button"
+            onClick={() => onTrace(breadcrumb.id)}
+          >
+            Review <ArrowRight size={15} aria-hidden="true" />
+          </button>
+        </li>
+      ))}
+    </ol>
   )
 }
 
@@ -565,6 +659,10 @@ export default function App() {
     () => deriveStory(workspace.project, workspace.breadcrumbs),
     [workspace],
   )
+  const openThreads = useMemo(
+    () => deriveOpenThreads(workspace.project, workspace.breadcrumbs),
+    [workspace.project, workspace.breadcrumbs],
+  )
 
   useEffect(() => {
     saveWorkspace(workspace)
@@ -717,12 +815,30 @@ export default function App() {
                   )}
                 </div>
               </div>
-              <div className="capture-callout">
+              <aside className="continue-panel" aria-labelledby="continue-heading">
+                <p className="eyebrow">Continue from here</p>
+                <h2 id="continue-heading">Pick up the thread</h2>
                 <button className="button-primary" onClick={() => openBreadcrumbForm()}>
                   <Plus size={17} aria-hidden="true" />
-                  Add breadcrumb
+                  Add the next breadcrumb
                 </button>
-                <p>Capture a decision, change, experiment, discovery, or milestone.</p>
+                <p className="continue-helper">
+                  Capture a decision, change, experiment, discovery, or milestone.
+                </p>
+                <div className="continue-links">
+                  {latestBreadcrumb && (
+                    <button
+                      className="text-button"
+                      onClick={() => showSource(latestBreadcrumb.id)}
+                    >
+                      Review the latest turning point
+                      <ArrowRight size={15} aria-hidden="true" />
+                    </button>
+                  )}
+                  <button className="text-button" onClick={() => changeView('story')}>
+                    Open Story so far <ArrowRight size={15} aria-hidden="true" />
+                  </button>
+                </div>
                 {latestBreadcrumb && (
                   <aside className="resume-context" aria-labelledby="resume-heading">
                     <div className="resume-meta">
@@ -744,21 +860,28 @@ export default function App() {
                     </button>
                   </aside>
                 )}
-              </div>
+              </aside>
             </header>
 
             <section className="content-section">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">Latest turning points</p>
-                  <h2>Recent history</h2>
+                  <p className="eyebrow">What changed recently</p>
+                  <h2>Recent progress</h2>
                 </div>
                 <button className="text-button" onClick={() => changeView('history')}>
                   View full history <ArrowRight size={15} aria-hidden="true" />
                 </button>
               </div>
-              <Timeline breadcrumbs={ordered} limit={4} onTrace={showSource} />
+              <RecentProgress breadcrumbs={ordered} onTrace={showSource} />
             </section>
+
+            <OpenThreads
+              breadcrumbs={workspace.breadcrumbs}
+              onEdit={openBreadcrumbForm}
+              onTrace={showSource}
+              threads={openThreads}
+            />
 
             <section className="story-preview">
               <div>
