@@ -495,6 +495,33 @@ textarea:focus-visible {
   text-underline-offset: 3px;
 }
 
+.goal-transition {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+  align-items: baseline;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent);
+  background: rgba(182, 76, 50, 0.045);
+}
+
+.goal-transition h4 {
+  margin: 0;
+  color: var(--accent-dark);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.goal-transition p {
+  margin: 0;
+  color: #514a43;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .type-label {
   display: inline-flex;
   width: fit-content;
@@ -1136,6 +1163,11 @@ textarea:focus-visible {
 
   .entry-heading h3 {
     font-size: 18px;
+  }
+
+  .goal-transition {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 
   .story-preview {

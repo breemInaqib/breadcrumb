@@ -52,7 +52,7 @@ interface TimelineProps {
   onTrace?: (breadcrumbId: string) => void
 }
 
-function Timeline({ breadcrumbs, limit, onTrace }: TimelineProps) {
+export function Timeline({ breadcrumbs, limit, onTrace }: TimelineProps) {
   const ordered = sortChronologically(breadcrumbs)
   const visible = limit ? ordered.slice(-limit) : ordered
 
@@ -84,6 +84,12 @@ function Timeline({ breadcrumbs, limit, onTrace }: TimelineProps) {
                   <strong>{buildsOn.title}</strong>
                   <ArrowRight size={13} aria-hidden="true" />
                 </button>
+              )}
+              {breadcrumb.nextGoal && (
+                <div className="goal-transition">
+                  <h4>Current goal became</h4>
+                  <p>{breadcrumb.nextGoal}</p>
+                </div>
               )}
               <div className="entry-details">
                 <div>
