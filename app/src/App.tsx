@@ -42,17 +42,29 @@ function formatDate(value: string) {
   return dateFormatter.format(new Date(value))
 }
 
+function preferredScrollBehavior(): ScrollBehavior {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ? 'auto'
+    : 'smooth'
+}
+
 function TypeLabel({ type }: { type: BreadcrumbType }) {
   return <span className={`type-label type-${type.toLowerCase()}`}>{type}</span>
 }
 
 interface TimelineProps {
   breadcrumbs: Breadcrumb[]
+  highlightedId?: string
   limit?: number
   onTrace?: (breadcrumbId: string) => void
 }
 
-export function Timeline({ breadcrumbs, limit, onTrace }: TimelineProps) {
+export function Timeline({
+  breadcrumbs,
+  highlightedId,
+  limit,
+  onTrace,
+}: TimelineProps) {
   const ordered = sortChronologically(breadcrumbs)
   const visible = limit ? ordered.slice(-limit) : ordered
 
@@ -60,14 +72,22 @@ export function Timeline({ breadcrumbs, limit, onTrace }: TimelineProps) {
     <ol className="timeline" aria-label="Project history">
       {visible.map((breadcrumb) => {
         const buildsOn = breadcrumbs.find(({ id }) => id === breadcrumb.buildsOnId)
+        const isHighlighted = breadcrumb.id === highlightedId
 
         return (
-          <li className="timeline-entry" id={`breadcrumb-${breadcrumb.id}`} key={breadcrumb.id}>
+          <li
+            aria-current={isHighlighted ? 'true' : undefined}
+            className={`timeline-entry ${isHighlighted ? 'is-traced' : ''}`}
+            id={`breadcrumb-${breadcrumb.id}`}
+            key={breadcrumb.id}
+            tabIndex={isHighlighted ? -1 : undefined}
+          >
             <div className="timeline-date">
               <time dateTime={breadcrumb.occurredAt}>{formatDate(breadcrumb.occurredAt)}</time>
             </div>
             <div className="timeline-marker" aria-hidden="true" />
             <article className="timeline-content">
+              {isHighlighted && <p className="trace-arrival">Traced source</p>}
               <div className="entry-heading">
                 <TypeLabel type={breadcrumb.type} />
                 <h3>{breadcrumb.title}</h3>
@@ -307,6 +327,7 @@ export default function App() {
   const [view, setView] = useState<View>('overview')
   const [captureOpen, setCaptureOpen] = useState(false)
   const [savedMessage, setSavedMessage] = useState('')
+  const [tracedBreadcrumbId, setTracedBreadcrumbId] = useState<string>()
 
   const ordered = useMemo(
     () => sortChronologically(workspace.breadcrumbs),
@@ -343,14 +364,18 @@ export default function App() {
 
   function changeView(nextView: View) {
     setView(nextView)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTracedBreadcrumbId(undefined)
+    window.scrollTo({ top: 0, behavior: preferredScrollBehavior() })
   }
 
   function showSource(sourceId: string) {
     setView('history')
+    setTracedBreadcrumbId(sourceId)
     window.setTimeout(() => {
-      document.getElementById(`breadcrumb-${sourceId}`)?.scrollIntoView({
-        behavior: 'smooth',
+      const source = document.getElementById(`breadcrumb-${sourceId}`)
+      source?.focus({ preventScroll: true })
+      source?.scrollIntoView({
+        behavior: preferredScrollBehavior(),
         block: 'center',
       })
     }, 60)
@@ -361,6 +386,7 @@ export default function App() {
       breadcrumb.nextGoal && breadcrumb.nextGoal !== workspace.project.currentGoal,
     )
     setWorkspace((current) => recordBreadcrumb(current, breadcrumb))
+    setTracedBreadcrumbId(undefined)
     setCaptureOpen(false)
     setSavedMessage(
       goalChanged
@@ -502,7 +528,11 @@ export default function App() {
                 Add breadcrumb
               </button>
             </header>
-            <Timeline breadcrumbs={ordered} onTrace={showSource} />
+            <Timeline
+              breadcrumbs={ordered}
+              highlightedId={tracedBreadcrumbId}
+              onTrace={showSource}
+            />
           </section>
         )}
 

@@ -40,3 +40,7 @@ Story so far walks backward from the latest breadcrumb through its recorded pred
 
 Capture includes an optional new current goal. When present, saving the breadcrumb updates the project snapshot and preserves the same value on the moment that explains the change. Overview and Story infer the goal’s source from that breadcrumb, keeping present orientation traceable without adding a separate goal-history entity or an unaccountable settings edit.
 History renders the resulting goal on that source moment, so following the trace explains the transition instead of landing on an otherwise ordinary entry.
+
+## Mark traced History destinations
+
+Following a citation, causal predecessor, current goal, or resumption cue temporarily marks the destination breadcrumb as **Traced source** and moves focus to it. Navigating to History directly clears the marker. This makes cross-view traceability perceptible without storing selection state or adding a separate detail view.

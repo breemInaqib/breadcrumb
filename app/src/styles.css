@@ -437,6 +437,28 @@ textarea:focus-visible {
   top: 35px;
 }
 
+.timeline-entry:focus {
+  outline: none;
+}
+
+.timeline-entry.is-traced .timeline-content {
+  background: linear-gradient(90deg, rgba(182, 76, 50, 0.075), transparent 82%);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.timeline-entry.is-traced .timeline-marker::after {
+  box-shadow: 0 0 0 4px rgba(182, 76, 50, 0.12), 0 0 0 1px var(--accent);
+}
+
+.trace-arrival {
+  margin: 0 0 8px;
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
 .entry-heading {
   display: flex;
   align-items: center;

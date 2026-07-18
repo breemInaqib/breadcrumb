@@ -20,4 +20,18 @@ describe('project timeline', () => {
 
     expect(html).not.toContain('Current goal became')
   })
+
+  it('marks the breadcrumb reached through a trace action', () => {
+    const source = seedWorkspace.breadcrumbs[0]
+    const html = renderToStaticMarkup(
+      <Timeline
+        breadcrumbs={seedWorkspace.breadcrumbs}
+        highlightedId={source.id}
+      />,
+    )
+
+    expect(html).toContain('aria-current="true"')
+    expect(html).toContain('tabindex="-1"')
+    expect(html).toContain('Traced source')
+  })
 })
