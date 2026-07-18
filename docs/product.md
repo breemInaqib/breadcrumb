@@ -148,6 +148,7 @@ Generated or derived explanations should remain traceable to the breadcrumbs tha
 
 * `id`
 * `projectId`
+* `buildsOnId`, when the moment continues an earlier breadcrumb
 * `type`
 * `title`
 * `whatHappened`

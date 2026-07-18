@@ -31,3 +31,7 @@ The capture drawer gives the context fields their own scroll area while keeping 
 ## Record one causal predecessor
 
 A breadcrumb may optionally name the earlier breadcrumb it builds on. The timeline exposes that one-hop connection as a trace action, making the path between consequential moments explicit without creating a dependency graph, a separate relationship entity, or an additional view.
+
+## Follow recorded causality in Story
+
+Story so far walks backward from the latest breadcrumb through its recorded predecessors, excludes the moments already used for the current state, and presents the three nearest remaining ancestors. Older browser-local workspaces without causal links fall back to the nearest chronological context. This keeps the narrative current without storing a second story model.

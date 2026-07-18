@@ -429,7 +429,7 @@ export default function App() {
                 <p className="eyebrow">Derived from {ordered.length} breadcrumbs</p>
                 <h2>Story so far</h2>
                 <p>
-                  Follow the path from the original template idea to the section composer now in pilot.
+                  Follow the recorded path from “{ordered[0]?.title}” to “{latestBreadcrumb?.title}.”
                 </p>
               </div>
               <button className="text-button" onClick={() => changeView('story')}>
@@ -482,7 +482,10 @@ export default function App() {
                     <h2>{section.title}</h2>
                     <p className="story-body">{section.body}</p>
                     {section.beats && (
-                      <ol className="story-beats" aria-label="Causal project sequence">
+                      <ol
+                        className="story-beats"
+                        aria-label={section.sequenceLabel ?? 'Project sequence'}
+                      >
                         {section.beats.map((beat) => {
                           const source = workspace.breadcrumbs.find(
                             ({ id }) => id === beat.sourceId,

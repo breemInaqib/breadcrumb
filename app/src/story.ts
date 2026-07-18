@@ -1,8 +1,8 @@
-import type { Breadcrumb, Project } from './types'
+import type { Breadcrumb, BreadcrumbType, Project } from './types'
 
 export interface StoryBeat {
   sourceId: string
-  relation: 'Tried' | 'Learned' | 'Changed'
+  relation: 'Decided' | 'Tried' | 'Learned' | 'Changed' | 'Reached'
   summary: string
 }
 
@@ -13,12 +13,59 @@ export interface StorySection {
   body: string
   sourceIds: string[]
   beats?: StoryBeat[]
+  sequenceLabel?: string
+}
+
+const relationByType: Record<BreadcrumbType, StoryBeat['relation']> = {
+  Decision: 'Decided',
+  Experiment: 'Tried',
+  Discovery: 'Learned',
+  Change: 'Changed',
+  Milestone: 'Reached',
 }
 
 export function sortChronologically(breadcrumbs: Breadcrumb[]) {
   return [...breadcrumbs].sort(
     (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime(),
   )
+}
+
+export function selectStoryThread(
+  breadcrumbs: Breadcrumb[],
+  currentSourceIds: string[],
+) {
+  const ordered = sortChronologically(breadcrumbs)
+  const first = ordered[0]
+  const latest = ordered.at(-1)
+  if (!first || !latest) return { breadcrumbs: [], connected: false }
+
+  const byId = new Map(ordered.map((breadcrumb) => [breadcrumb.id, breadcrumb]))
+  const excludedIds = new Set([first.id, ...currentSourceIds])
+  const visitedIds = new Set<string>()
+  const connectedAncestors: Breadcrumb[] = []
+  let cursor: Breadcrumb | undefined = latest
+
+  while (cursor?.buildsOnId && !visitedIds.has(cursor.id)) {
+    visitedIds.add(cursor.id)
+    const predecessor = byId.get(cursor.buildsOnId)
+    if (!predecessor || visitedIds.has(predecessor.id)) break
+    if (!excludedIds.has(predecessor.id)) connectedAncestors.unshift(predecessor)
+    cursor = predecessor
+  }
+
+  if (connectedAncestors.length > 0) {
+    return {
+      breadcrumbs: connectedAncestors.slice(-3),
+      connected: true,
+    }
+  }
+
+  return {
+    breadcrumbs: ordered
+      .filter(({ id }) => !excludedIds.has(id))
+      .slice(-3),
+    connected: false,
+  }
 }
 
 export function deriveStory(
@@ -29,11 +76,16 @@ export function deriveStory(
   if (ordered.length === 0) return []
 
   const first = ordered[0]
-  const turningPoints = ordered.filter(({ type }) =>
-    ['Experiment', 'Discovery', 'Change'].includes(type),
-  )
-  const middle = turningPoints.slice(0, 3)
   const latest = ordered.slice(-2)
+  const currentSourcesWithoutOrigin = latest.filter(({ id }) => id !== first.id)
+  const currentSources = currentSourcesWithoutOrigin.length > 0
+    ? currentSourcesWithoutOrigin
+    : latest
+  const storyThread = selectStoryThread(
+    ordered,
+    currentSources.map(({ id }) => id),
+  )
+  const middle = storyThread.breadcrumbs
 
   const sections: StorySection[] = [
     {
@@ -46,31 +98,24 @@ export function deriveStory(
   ]
 
   if (middle.length > 0) {
-    const relationByType = {
-      Experiment: 'Tried',
-      Discovery: 'Learned',
-      Change: 'Changed',
-    } as const
-
     sections.push({
       id: 'turning-point',
-      eyebrow: 'What changed',
+      eyebrow: 'What led here',
       title: middle.at(-1)?.title ?? 'The direction evolved',
-      body:
-        'The project moved through a connected sequence of testing, learning, and changing direction.',
+      body: storyThread.connected
+        ? 'These recorded connections form the clearest path into the project’s current state.'
+        : 'These recent turning points provide the clearest chronological context for the project’s current state.',
       sourceIds: middle.map(({ id }) => id),
       beats: middle.map((crumb) => ({
         sourceId: crumb.id,
-        relation: relationByType[crumb.type as keyof typeof relationByType],
+        relation: relationByType[crumb.type],
         summary: crumb.outcome || crumb.whatHappened,
       })),
+      sequenceLabel: storyThread.connected
+        ? 'Recorded causal thread'
+        : 'Recent project sequence',
     })
   }
-
-  const latestUnique = latest.filter(
-    ({ id }) => id !== first.id && !middle.some((crumb) => crumb.id === id),
-  )
-  const currentSources = latestUnique.length > 0 ? latestUnique : latest
 
   sections.push({
     id: 'current-state',
