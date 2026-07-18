@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { Timeline } from './App'
+import { StoryEvidence, Timeline } from './App'
 import { seedWorkspace } from './data'
 
 describe('project timeline', () => {
@@ -57,5 +57,25 @@ describe('project timeline', () => {
 
     expect(html).toContain(`aria-label="Edit ${source.title}"`)
     expect(html).toContain('Edit')
+  })
+
+  it('preserves each supporting breadcrumb’s recorded predecessor in Story', () => {
+    const predecessor = seedWorkspace.breadcrumbs[4]
+    const source = seedWorkspace.breadcrumbs[5]
+    const html = renderToStaticMarkup(
+      <StoryEvidence
+        breadcrumbs={seedWorkspace.breadcrumbs}
+        onTrace={() => undefined}
+        sourceIds={[source.id]}
+      />,
+    )
+
+    expect(html).toContain('Supported by')
+    expect(html).toContain(source.title)
+    expect(html).toContain('Builds on')
+    expect(html).toContain(predecessor.title)
+    expect(html).toContain(
+      `aria-label="Builds on ${predecessor.title}; trace earlier breadcrumb"`,
+    )
   })
 })

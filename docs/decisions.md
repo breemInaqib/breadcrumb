@@ -56,3 +56,7 @@ History labels each saved source with its hostname and readable path instead of 
 ## Correct the original moment in place
 
 History offers a quiet edit action on each breadcrumb and reuses the capture drawer with the recorded values prefilled. Saving replaces that moment under the same ID, so citations and downstream causal links remain intact. Causal predecessor choices exclude the edited moment and its descendants, and changing a goal-setting breadcrumb recomputes the current goal from the latest recorded transition. This keeps project memory repairable without introducing revisions, comments, or another persistent entity.
+
+## Keep causal links visible in Story evidence
+
+Story citations show a supporting breadcrumb’s recorded predecessor directly beneath it and make that relationship traceable to History. This preserves the immediate “builds on” context at section boundaries and inside the current state without inventing links between otherwise unrelated moments or adding a separate graph view.

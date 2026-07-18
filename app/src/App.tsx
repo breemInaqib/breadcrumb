@@ -156,6 +156,59 @@ export function Timeline({
   )
 }
 
+interface StoryEvidenceProps {
+  breadcrumbs: Breadcrumb[]
+  onTrace: (breadcrumbId: string) => void
+  sourceIds: string[]
+}
+
+export function StoryEvidence({
+  breadcrumbs,
+  onTrace,
+  sourceIds,
+}: StoryEvidenceProps) {
+  return (
+    <div className="citations">
+      <span>Supported by</span>
+      <ul aria-label="Supporting breadcrumbs">
+        {sourceIds.map((sourceId) => {
+          const source = breadcrumbs.find(({ id }) => id === sourceId)
+          if (!source) return null
+          const predecessor = breadcrumbs.find(
+            ({ id }) => id === source.buildsOnId,
+          )
+
+          return (
+            <li key={sourceId}>
+              <button
+                className="citation-source"
+                onClick={() => onTrace(sourceId)}
+              >
+                <TypeLabel type={source.type} />
+                {source.title}
+                <ArrowRight size={13} aria-hidden="true" />
+              </button>
+              {predecessor && (
+                <button
+                  aria-label={`Builds on ${predecessor.title}; trace earlier breadcrumb`}
+                  className="causal-link citation-predecessor"
+                  onClick={() => onTrace(predecessor.id)}
+                  type="button"
+                >
+                  <span>Builds on</span>
+                  <TypeLabel type={predecessor.type} />
+                  <strong>{predecessor.title}</strong>
+                  <ArrowRight size={13} aria-hidden="true" />
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 interface CaptureFormProps {
   breadcrumbs: Breadcrumb[]
   currentGoal: string
@@ -744,22 +797,11 @@ export default function App() {
                       </ol>
                     )}
                     {!section.beats && (
-                      <div className="citations" aria-label="Supporting breadcrumbs">
-                        <span>Supported by</span>
-                        {section.sourceIds.map((sourceId) => {
-                          const source = workspace.breadcrumbs.find(
-                            ({ id }) => id === sourceId,
-                          )
-                          if (!source) return null
-                          return (
-                            <button key={sourceId} onClick={() => showSource(sourceId)}>
-                              <TypeLabel type={source.type} />
-                              {source.title}
-                              <ArrowRight size={13} aria-hidden="true" />
-                            </button>
-                          )
-                        })}
-                      </div>
+                      <StoryEvidence
+                        breadcrumbs={workspace.breadcrumbs}
+                        onTrace={showSource}
+                        sourceIds={section.sourceIds}
+                      />
                     )}
                   </div>
                 </article>
