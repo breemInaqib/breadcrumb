@@ -614,6 +614,71 @@ textarea:focus-visible {
   line-height: 1.72;
 }
 
+.story-beats {
+  margin: 25px 0 0;
+  padding: 0;
+  border-bottom: 1px solid var(--rule);
+  list-style: none;
+}
+
+.story-beat {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 20px;
+  padding: 22px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.story-beat-relation {
+  padding-top: 5px;
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.story-beat-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.story-beat-heading h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.story-beat p {
+  max-width: 62ch;
+  margin: 9px 0 0;
+  color: #615951;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.story-beat button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.story-beat button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .citations {
   display: flex;
   flex-direction: column;
@@ -995,6 +1060,11 @@ textarea:focus-visible {
 
   .story-section-number {
     font-size: 11px;
+  }
+
+  .story-beat {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 
   .capture-drawer {

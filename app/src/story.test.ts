@@ -14,6 +14,14 @@ describe('project story', () => {
 
     expect(story).toHaveLength(3)
     expect(story.every((section) => section.sourceIds.length > 0)).toBe(true)
+    expect(story[1].beats?.map(({ relation }) => relation)).toEqual([
+      'Tried',
+      'Learned',
+      'Changed',
+    ])
+    expect(story[1].beats?.map(({ sourceId }) => sourceId)).toEqual(
+      story[1].sourceIds,
+    )
     expect(story.at(-1)?.title).toBe(seedWorkspace.project.currentGoal)
   })
 

@@ -437,20 +437,53 @@ export default function App() {
                     <p className="eyebrow">{section.eyebrow}</p>
                     <h2>{section.title}</h2>
                     <p className="story-body">{section.body}</p>
-                    <div className="citations" aria-label="Supporting breadcrumbs">
-                      <span>Supported by</span>
-                      {section.sourceIds.map((sourceId) => {
-                        const source = workspace.breadcrumbs.find(({ id }) => id === sourceId)
-                        if (!source) return null
-                        return (
-                          <button key={sourceId} onClick={() => showSource(sourceId)}>
-                            <TypeLabel type={source.type} />
-                            {source.title}
-                            <ArrowRight size={13} aria-hidden="true" />
-                          </button>
-                        )
-                      })}
-                    </div>
+                    {section.beats && (
+                      <ol className="story-beats" aria-label="Causal project sequence">
+                        {section.beats.map((beat) => {
+                          const source = workspace.breadcrumbs.find(
+                            ({ id }) => id === beat.sourceId,
+                          )
+                          if (!source) return null
+                          return (
+                            <li className="story-beat" key={beat.sourceId}>
+                              <div className="story-beat-relation">{beat.relation}</div>
+                              <div>
+                                <div className="story-beat-heading">
+                                  <TypeLabel type={source.type} />
+                                  <h3>{source.title}</h3>
+                                </div>
+                                <p>{beat.summary}</p>
+                                <button
+                                  aria-label={`Trace ${source.title} in project history`}
+                                  onClick={() => showSource(source.id)}
+                                >
+                                  Trace source
+                                  <ArrowRight size={13} aria-hidden="true" />
+                                </button>
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ol>
+                    )}
+                    {!section.beats && (
+                      <div className="citations" aria-label="Supporting breadcrumbs">
+                        <span>Supported by</span>
+                        {section.sourceIds.map((sourceId) => {
+                          const source = workspace.breadcrumbs.find(
+                            ({ id }) => id === sourceId,
+                          )
+                          if (!source) return null
+                          return (
+                            <button key={sourceId} onClick={() => showSource(sourceId)}>
+                              <TypeLabel type={source.type} />
+                              {source.title}
+                              <ArrowRight size={13} aria-hidden="true" />
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 </article>
               ))}

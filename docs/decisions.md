@@ -19,3 +19,7 @@ The interface uses Overview, History, and Story views around one project. It int
 ## Derive resumption context from the latest breadcrumb
 
 The overview pairs the current goal with a compact “Where things stand” cue derived from the newest breadcrumb. It exposes the latest outcome above the fold and links back to the source moment, improving project resumption without introducing status fields or a separate progress model.
+
+## Express the turning point as a causal sequence
+
+The middle of Story so far derives a **Tried → Learned → Changed** sequence from experiment, discovery, and change breadcrumbs. Each beat retains its source ID. This makes causality legible without adding a relationship graph or storing a separate narrative model.

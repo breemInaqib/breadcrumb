@@ -1,11 +1,18 @@
 import type { Breadcrumb, Project } from './types'
 
+export interface StoryBeat {
+  sourceId: string
+  relation: 'Tried' | 'Learned' | 'Changed'
+  summary: string
+}
+
 export interface StorySection {
   id: string
   eyebrow: string
   title: string
   body: string
   sourceIds: string[]
+  beats?: StoryBeat[]
 }
 
 export function sortChronologically(breadcrumbs: Breadcrumb[]) {
@@ -39,14 +46,24 @@ export function deriveStory(
   ]
 
   if (middle.length > 0) {
+    const relationByType = {
+      Experiment: 'Tried',
+      Discovery: 'Learned',
+      Change: 'Changed',
+    } as const
+
     sections.push({
       id: 'turning-point',
       eyebrow: 'What changed',
       title: middle.at(-1)?.title ?? 'The direction evolved',
-      body: middle
-        .map((crumb) => `${crumb.title}: ${crumb.outcome || crumb.whatHappened}`)
-        .join(' '),
+      body:
+        'The project moved through a connected sequence of testing, learning, and changing direction.',
       sourceIds: middle.map(({ id }) => id),
+      beats: middle.map((crumb) => ({
+        sourceId: crumb.id,
+        relation: relationByType[crumb.type as keyof typeof relationByType],
+        summary: crumb.outcome || crumb.whatHappened,
+      })),
     })
   }
 
