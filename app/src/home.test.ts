@@ -3,6 +3,10 @@ import { seedWorkspace } from './data'
 import { deriveOpenThreads } from './home'
 
 describe('project home context', () => {
+  it('does not call an unrecorded goal an open thread', () => {
+    expect(deriveOpenThreads(seedWorkspace.project, [])).toEqual([])
+  })
+
   it('keeps the current goal as an open thread and traces its source', () => {
     const threads = deriveOpenThreads(seedWorkspace.project, seedWorkspace.breadcrumbs)
 

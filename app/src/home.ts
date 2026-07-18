@@ -19,6 +19,8 @@ export function deriveOpenThreads(
   breadcrumbs: Breadcrumb[],
 ): OpenThread[] {
   const ordered = sortChronologically(breadcrumbs)
+  if (ordered.length === 0) return []
+
   const goalSource = [...ordered]
     .reverse()
     .find(({ nextGoal }) => nextGoal === project.currentGoal)

@@ -361,6 +361,42 @@ function RecentProgress({ breadcrumbs, onTrace }: RecentProgressProps) {
   )
 }
 
+interface EmptyMemoryProps {
+  actionLabel?: string
+  description: string
+  eyebrow: string
+  id: string
+  onAdd: () => void
+  showAction?: boolean
+  title: string
+}
+
+function EmptyMemory({
+  actionLabel = 'Add first breadcrumb',
+  description,
+  eyebrow,
+  id,
+  onAdd,
+  showAction = true,
+  title,
+}: EmptyMemoryProps) {
+  return (
+    <section className="empty-memory" aria-labelledby={id}>
+      <div className="empty-memory-copy">
+        <p className="eyebrow">{eyebrow}</p>
+        <h3 id={id}>{title}</h3>
+        <p>{description}</p>
+      </div>
+      {showAction && (
+        <button className="button-primary" onClick={onAdd} type="button">
+          <Plus size={17} aria-hidden="true" />
+          {actionLabel}
+        </button>
+      )}
+    </section>
+  )
+}
+
 interface CaptureFormProps {
   breadcrumbs: Breadcrumb[]
   currentGoal: string
@@ -648,6 +684,7 @@ export default function App() {
     () => sortChronologically(workspace.breadcrumbs),
     [workspace.breadcrumbs],
   )
+  const hasHistory = ordered.length > 0
   const latestBreadcrumb = ordered.at(-1)
   const currentGoalSource = useMemo(
     () => [...ordered]
@@ -820,7 +857,7 @@ export default function App() {
                 <h2 id="continue-heading">Pick up the thread</h2>
                 <button className="button-primary" onClick={() => openBreadcrumbForm()}>
                   <Plus size={17} aria-hidden="true" />
-                  Add the next breadcrumb
+                  {hasHistory ? 'Add the next breadcrumb' : 'Add first breadcrumb'}
                 </button>
                 <p className="continue-helper">
                   Capture a decision, change, experiment, discovery, or milestone.
@@ -835,9 +872,11 @@ export default function App() {
                       <ArrowRight size={15} aria-hidden="true" />
                     </button>
                   )}
-                  <button className="text-button" onClick={() => changeView('story')}>
-                    Open Story so far <ArrowRight size={15} aria-hidden="true" />
-                  </button>
+                  {hasHistory && (
+                    <button className="text-button" onClick={() => changeView('story')}>
+                      Open Story so far <ArrowRight size={15} aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
                 {latestBreadcrumb && (
                   <aside className="resume-context" aria-labelledby="resume-heading">
@@ -873,32 +912,50 @@ export default function App() {
                   View full history <ArrowRight size={15} aria-hidden="true" />
                 </button>
               </div>
-              <RecentProgress breadcrumbs={ordered} onTrace={showSource} />
+              {hasHistory ? (
+                <RecentProgress breadcrumbs={ordered} onTrace={showSource} />
+              ) : (
+                <EmptyMemory
+                  description="Capture what changed, why it mattered, and what it led to. That first breadcrumb gives the project a history to return to."
+                  eyebrow="Your project memory starts here"
+                  id="overview-empty-memory"
+                  onAdd={() => openBreadcrumbForm()}
+                  showAction={false}
+                  title="Record the first meaningful moment"
+                />
+              )}
             </section>
 
-            <OpenThreads
-              breadcrumbs={workspace.breadcrumbs}
-              onEdit={openBreadcrumbForm}
-              onTrace={showSource}
-              threads={openThreads}
-            />
+            {openThreads.length > 0 && (
+              <OpenThreads
+                breadcrumbs={workspace.breadcrumbs}
+                onEdit={openBreadcrumbForm}
+                onTrace={showSource}
+                threads={openThreads}
+              />
+            )}
 
             <section className="story-preview">
               <div>
                 <p className="eyebrow">
-                  Derived from {ordered.length}{' '}
-                  {ordered.length === 1 ? 'breadcrumb' : 'breadcrumbs'}
+                  {hasHistory
+                    ? `Derived from ${ordered.length} ${ordered.length === 1 ? 'breadcrumb' : 'breadcrumbs'}`
+                    : 'No recorded moments yet'}
                 </p>
                 <h2>Story so far</h2>
                 <p>
-                  {ordered.length === 1
+                  {!hasHistory
+                    ? 'The Story so far will take shape after the first meaningful moment is recorded.'
+                    : ordered.length === 1
                     ? 'One meaningful moment starts this project’s recorded story.'
                     : `Follow the recorded path from “${ordered[0]?.title}” to “${latestBreadcrumb?.title}.”`}
                 </p>
               </div>
-              <button className="text-button" onClick={() => changeView('story')}>
-                Read the story <ArrowRight size={15} aria-hidden="true" />
-              </button>
+              {hasHistory ? (
+                <button className="text-button" onClick={() => changeView('story')}>
+                  Read the story <ArrowRight size={15} aria-hidden="true" />
+                </button>
+              ) : null}
             </section>
           </>
         )}
@@ -907,23 +964,39 @@ export default function App() {
           <section className="page-view">
             <header className="page-header">
               <div>
-                <p className="eyebrow">{ordered.length} meaningful moments</p>
+                <p className="eyebrow">
+                  {hasHistory
+                    ? `${ordered.length} meaningful ${ordered.length === 1 ? 'moment' : 'moments'}`
+                    : 'No meaningful moments yet'}
+                </p>
                 <h1>Project history</h1>
                 <p>
                   The decisions, changes, experiments, discoveries, and milestones that shaped {workspace.project.name}.
                 </p>
               </div>
-              <button className="button-primary" onClick={() => openBreadcrumbForm()}>
-                <Plus size={17} aria-hidden="true" />
-                Add breadcrumb
-              </button>
+              {hasHistory && (
+                <button className="button-primary" onClick={() => openBreadcrumbForm()}>
+                  <Plus size={17} aria-hidden="true" />
+                  Add breadcrumb
+                </button>
+              )}
             </header>
-            <Timeline
-              breadcrumbs={ordered}
-              highlightedId={tracedBreadcrumbId}
-              onEdit={openBreadcrumbForm}
-              onTrace={showSource}
-            />
+            {hasHistory ? (
+              <Timeline
+                breadcrumbs={ordered}
+                highlightedId={tracedBreadcrumbId}
+                onEdit={openBreadcrumbForm}
+                onTrace={showSource}
+              />
+            ) : (
+              <EmptyMemory
+                description="Record a decision, change, experiment, discovery, or milestone so future teammates can understand how the project got here."
+                eyebrow="Project history starts here"
+                id="history-empty-memory"
+                onAdd={() => openBreadcrumbForm()}
+                title="Give the project a first turning point"
+              />
+            )}
           </section>
         )}
 
@@ -934,42 +1007,54 @@ export default function App() {
                 <p className="eyebrow">How did this project get here?</p>
                 <h1>Story so far</h1>
                 <p>
-                  A concise account derived from {ordered.length} recorded{' '}
-                  {ordered.length === 1 ? 'moment' : 'moments'}. Every section
-                  points back to its evidence.
+                  {hasHistory
+                    ? `A concise account derived from ${ordered.length} recorded ${ordered.length === 1 ? 'moment' : 'moments'}. Every section points back to its evidence.`
+                    : 'The story will begin when the project records its first meaningful moment.'}
                 </p>
               </div>
-              <button className="button-secondary" onClick={() => changeView('history')}>
-                View full history
-              </button>
+              {hasHistory && (
+                <button className="button-secondary" onClick={() => changeView('history')}>
+                  View full history
+                </button>
+              )}
             </header>
 
-            <div className="story-sections">
-              {story.map((section, sectionIndex) => (
-                <article className="story-section" key={section.id}>
-                  <div className="story-section-number">0{sectionIndex + 1}</div>
-                  <div>
-                    <p className="eyebrow">{section.eyebrow}</p>
-                    <h2>{section.title}</h2>
-                    <p className="story-body">{section.body}</p>
-                    {section.beats && (
-                      <StorySequence
-                        breadcrumbs={workspace.breadcrumbs}
-                        onTrace={showSource}
-                        section={section}
-                      />
-                    )}
-                    {!section.beats && (
-                      <StoryEvidence
-                        breadcrumbs={workspace.breadcrumbs}
-                        onTrace={showSource}
-                        sourceIds={section.sourceIds}
-                      />
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
+            {hasHistory ? (
+              <div className="story-sections">
+                {story.map((section, sectionIndex) => (
+                  <article className="story-section" key={section.id}>
+                    <div className="story-section-number">0{sectionIndex + 1}</div>
+                    <div>
+                      <p className="eyebrow">{section.eyebrow}</p>
+                      <h2>{section.title}</h2>
+                      <p className="story-body">{section.body}</p>
+                      {section.beats && (
+                        <StorySequence
+                          breadcrumbs={workspace.breadcrumbs}
+                          onTrace={showSource}
+                          section={section}
+                        />
+                      )}
+                      {!section.beats && (
+                        <StoryEvidence
+                          breadcrumbs={workspace.breadcrumbs}
+                          onTrace={showSource}
+                          sourceIds={section.sourceIds}
+                        />
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyMemory
+                description="Once a breadcrumb captures what happened and why, Breadcrumb can begin a traceable Story so the project’s path is easy to revisit."
+                eyebrow="Story needs evidence"
+                id="story-empty-memory"
+                onAdd={() => openBreadcrumbForm()}
+                title="Record the first moment worth remembering"
+              />
+            )}
           </section>
         )}
       </main>

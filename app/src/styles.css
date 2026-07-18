@@ -766,6 +766,38 @@ textarea:focus-visible {
   line-height: 1.5;
 }
 
+.empty-memory {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  align-items: center;
+  margin-top: 26px;
+  padding: 28px 30px;
+  border: 1px solid var(--rule);
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.empty-memory-copy {
+  max-width: 650px;
+}
+
+.empty-memory-copy h3 {
+  margin: 7px 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(24px, 3vw, 31px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.empty-memory-copy > p:last-child {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .open-threads {
   padding-top: 42px;
 }
@@ -1387,6 +1419,15 @@ textarea:focus-visible {
   .section-note {
     max-width: 420px;
     text-align: left;
+  }
+
+  .empty-memory {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .empty-memory .button-primary {
+    width: 100%;
   }
 
   .thread-list {
