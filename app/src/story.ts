@@ -77,6 +77,20 @@ export function deriveStory(
   if (ordered.length === 0) return []
 
   const first = ordered[0]
+  if (ordered.length === 1) {
+    return [
+      {
+        id: 'current-state',
+        eyebrow: 'The story begins here',
+        title: project.currentGoal,
+        body: [first.whatHappened, first.why, first.outcome]
+          .filter(Boolean)
+          .join(' '),
+        sourceIds: [first.id],
+      },
+    ]
+  }
+
   const latest = ordered.slice(-2)
   const goalSource = [...ordered]
     .reverse()

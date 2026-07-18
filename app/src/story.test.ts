@@ -25,6 +25,37 @@ describe('project story', () => {
     expect(story.at(-1)?.title).toBe(seedWorkspace.project.currentGoal)
   })
 
+  it('keeps a one-moment history to one honest story section', () => {
+    const first = {
+      ...seedWorkspace.breadcrumbs[0],
+      nextGoal: 'Validate the initial direction with three pilot teams.',
+    }
+    const project = { ...seedWorkspace.project, currentGoal: first.nextGoal }
+    const story = deriveStory(project, [first])
+
+    expect(story).toHaveLength(1)
+    expect(story[0]).toMatchObject({
+      id: 'current-state',
+      eyebrow: 'The story begins here',
+      title: project.currentGoal,
+      sourceIds: [first.id],
+    })
+    expect(story[0].body).toContain(first.whatHappened)
+    expect(story[0].body).toContain(first.why)
+    expect(story[0].body).toContain(first.outcome)
+  })
+
+  it('turns two moments into two distinct story sections', () => {
+    const breadcrumbs = seedWorkspace.breadcrumbs.slice(0, 2)
+    const story = deriveStory(seedWorkspace.project, breadcrumbs)
+
+    expect(story).toHaveLength(2)
+    expect(story.map(({ id }) => id)).toEqual(['origin', 'current-state'])
+    expect(story[0].sourceIds).toEqual(['b1'])
+    expect(story[1].sourceIds).toEqual(['b2'])
+    expect(story.some(({ beats }) => Boolean(beats))).toBe(false)
+  })
+
   it('includes a newly recorded turning point in the story', () => {
     const newBreadcrumb = {
       ...seedWorkspace.breadcrumbs[0],

@@ -762,10 +762,15 @@ export default function App() {
 
             <section className="story-preview">
               <div>
-                <p className="eyebrow">Derived from {ordered.length} breadcrumbs</p>
+                <p className="eyebrow">
+                  Derived from {ordered.length}{' '}
+                  {ordered.length === 1 ? 'breadcrumb' : 'breadcrumbs'}
+                </p>
                 <h2>Story so far</h2>
                 <p>
-                  Follow the recorded path from “{ordered[0]?.title}” to “{latestBreadcrumb?.title}.”
+                  {ordered.length === 1
+                    ? 'One meaningful moment starts this project’s recorded story.'
+                    : `Follow the recorded path from “${ordered[0]?.title}” to “${latestBreadcrumb?.title}.”`}
                 </p>
               </div>
               <button className="text-button" onClick={() => changeView('story')}>
@@ -806,7 +811,9 @@ export default function App() {
                 <p className="eyebrow">How did this project get here?</p>
                 <h1>Story so far</h1>
                 <p>
-                  A concise account derived from {ordered.length} recorded moments. Every section points back to its evidence.
+                  A concise account derived from {ordered.length} recorded{' '}
+                  {ordered.length === 1 ? 'moment' : 'moments'}. Every section
+                  points back to its evidence.
                 </p>
               </div>
               <button className="button-secondary" onClick={() => changeView('history')}>
