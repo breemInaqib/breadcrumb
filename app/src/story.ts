@@ -77,10 +77,22 @@ export function deriveStory(
 
   const first = ordered[0]
   const latest = ordered.slice(-2)
-  const currentSourcesWithoutOrigin = latest.filter(({ id }) => id !== first.id)
+  const goalSource = [...ordered]
+    .reverse()
+    .find(({ nextGoal }) => nextGoal === project.currentGoal)
+  const currentSourceCandidates = [goalSource, ...latest].filter(
+    (breadcrumb): breadcrumb is Breadcrumb => Boolean(breadcrumb),
+  )
+  const currentSourcesWithoutOrigin = sortChronologically(
+    Array.from(
+      new Map(
+        currentSourceCandidates.map((breadcrumb) => [breadcrumb.id, breadcrumb]),
+      ).values(),
+    ),
+  ).filter(({ id }) => id !== first.id)
   const currentSources = currentSourcesWithoutOrigin.length > 0
     ? currentSourcesWithoutOrigin
-    : latest
+    : currentSourceCandidates
   const storyThread = selectStoryThread(
     ordered,
     currentSources.map(({ id }) => id),

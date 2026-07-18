@@ -98,6 +98,7 @@ Users can create a breadcrumb with:
 * what happened;
 * why it happened;
 * outcome or consequence, when known;
+* a new current goal, when the moment changes what the project is working toward;
 * date or time;
 * optional source links.
 
@@ -149,6 +150,7 @@ Generated or derived explanations should remain traceable to the breadcrumbs tha
 * `id`
 * `projectId`
 * `buildsOnId`, when the moment continues an earlier breadcrumb
+* `nextGoal`, when the moment changes the current goal
 * `type`
 * `title`
 * `whatHappened`

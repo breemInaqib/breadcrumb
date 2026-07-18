@@ -35,3 +35,7 @@ A breadcrumb may optionally name the earlier breadcrumb it builds on. The timeli
 ## Follow recorded causality in Story
 
 Story so far walks backward from the latest breadcrumb through its recorded predecessors, excludes the moments already used for the current state, and presents the three nearest remaining ancestors. Older browser-local workspaces without causal links fall back to the nearest chronological context. This keeps the narrative current without storing a second story model.
+
+## Advance the current goal through a breadcrumb
+
+Capture includes an optional new current goal. When present, saving the breadcrumb updates the project snapshot and preserves the same value on the moment that explains the change. Overview and Story infer the goal’s source from that breadcrumb, keeping present orientation traceable without adding a separate goal-history entity or an unaccountable settings edit.

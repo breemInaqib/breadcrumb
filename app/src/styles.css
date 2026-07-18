@@ -227,6 +227,10 @@ main {
   line-height: 1.32;
 }
 
+.current-goal .text-button {
+  margin-top: 8px;
+}
+
 .capture-callout {
   padding-bottom: 4px;
 }

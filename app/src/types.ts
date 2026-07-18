@@ -20,6 +20,7 @@ export interface Breadcrumb {
   id: string
   projectId: string
   buildsOnId?: string
+  nextGoal?: string
   type: BreadcrumbType
   title: string
   whatHappened: string

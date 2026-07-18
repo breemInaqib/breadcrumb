@@ -65,14 +65,49 @@ describe('project story', () => {
     ]
     const story = deriveStory(seedWorkspace.project, breadcrumbs)
 
-    expect(story[1].sourceIds).toEqual(['b4', 'b5', 'b6'])
+    expect(story[1].sourceIds).toEqual(['b3', 'b4', 'b5'])
     expect(story[1].beats?.map(({ relation }) => relation)).toEqual([
+      'Learned',
       'Changed',
       'Tried',
-      'Reached',
     ])
     expect(story[1].sequenceLabel).toBe('Recorded causal thread')
-    expect(story.at(-1)?.sourceIds).toEqual(['b7', 'b8'])
+    expect(story.at(-1)?.sourceIds).toEqual(['b6', 'b7', 'b8'])
+  })
+
+  it('keeps the current goal supported by the breadcrumb that set it', () => {
+    const nextGoal = 'Validate transition guidance with the next pilot group.'
+    const goalChange = {
+      ...seedWorkspace.breadcrumbs[0],
+      id: 'b7',
+      buildsOnId: 'b6',
+      nextGoal,
+      type: 'Change' as const,
+      occurredAt: '2026-07-18T12:00:00.000Z',
+    }
+    const laterExperiment = {
+      ...seedWorkspace.breadcrumbs[0],
+      id: 'b8',
+      buildsOnId: 'b7',
+      type: 'Experiment' as const,
+      occurredAt: '2026-07-19T12:00:00.000Z',
+    }
+    const laterDiscovery = {
+      ...seedWorkspace.breadcrumbs[0],
+      id: 'b9',
+      buildsOnId: 'b8',
+      type: 'Discovery' as const,
+      occurredAt: '2026-07-20T12:00:00.000Z',
+    }
+    const project = { ...seedWorkspace.project, currentGoal: nextGoal }
+    const story = deriveStory(project, [
+      ...seedWorkspace.breadcrumbs,
+      goalChange,
+      laterExperiment,
+      laterDiscovery,
+    ])
+
+    expect(story.at(-1)?.sourceIds).toEqual(['b7', 'b8', 'b9'])
   })
 
   it('uses recent chronology when explicit links are unavailable', () => {

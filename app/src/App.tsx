@@ -12,6 +12,7 @@ import {
 import { breadcrumbTypes, type Breadcrumb, type BreadcrumbType } from './types'
 import { loadWorkspace, saveWorkspace } from './storage'
 import { deriveStory, sortChronologically } from './story'
+import { recordBreadcrumb } from './workspace'
 
 type View = 'overview' | 'history' | 'story'
 
@@ -121,12 +122,19 @@ function Timeline({ breadcrumbs, limit, onTrace }: TimelineProps) {
 
 interface CaptureFormProps {
   breadcrumbs: Breadcrumb[]
+  currentGoal: string
   onClose: () => void
   onSave: (breadcrumb: Breadcrumb) => void
   projectId: string
 }
 
-function CaptureForm({ breadcrumbs, onClose, onSave, projectId }: CaptureFormProps) {
+function CaptureForm({
+  breadcrumbs,
+  currentGoal,
+  onClose,
+  onSave,
+  projectId,
+}: CaptureFormProps) {
   const [type, setType] = useState<BreadcrumbType>('Decision')
   const priorBreadcrumbs = sortChronologically(breadcrumbs).reverse()
 
@@ -140,6 +148,7 @@ function CaptureForm({ breadcrumbs, onClose, onSave, projectId }: CaptureFormPro
       id: crypto.randomUUID(),
       projectId,
       buildsOnId: String(form.get('buildsOnId') ?? '') || undefined,
+      nextGoal: String(form.get('nextGoal') ?? '').trim() || undefined,
       type,
       title: String(form.get('title')).trim(),
       whatHappened: String(form.get('whatHappened')).trim(),
@@ -246,6 +255,21 @@ function CaptureForm({ breadcrumbs, onClose, onSave, projectId }: CaptureFormPro
               />
             </label>
 
+            <div className="capture-field">
+              <label>
+                <span>New current goal <small>Optional</small></span>
+                <input
+                  aria-describedby="next-goal-helper"
+                  name="nextGoal"
+                  placeholder={currentGoal}
+                  type="text"
+                />
+              </label>
+              <small className="capture-helper" id="next-goal-helper">
+                Use only if this moment changes what the project is working toward.
+              </small>
+            </div>
+
             <div className="form-row">
               <label>
                 <span>Date</span>
@@ -276,13 +300,19 @@ export default function App() {
   const [workspace, setWorkspace] = useState(loadWorkspace)
   const [view, setView] = useState<View>('overview')
   const [captureOpen, setCaptureOpen] = useState(false)
-  const [savedMessage, setSavedMessage] = useState(false)
+  const [savedMessage, setSavedMessage] = useState('')
 
   const ordered = useMemo(
     () => sortChronologically(workspace.breadcrumbs),
     [workspace.breadcrumbs],
   )
   const latestBreadcrumb = ordered.at(-1)
+  const currentGoalSource = useMemo(
+    () => [...ordered]
+      .reverse()
+      .find(({ nextGoal }) => nextGoal === workspace.project.currentGoal),
+    [ordered, workspace.project.currentGoal],
+  )
   const story = useMemo(
     () => deriveStory(workspace.project, workspace.breadcrumbs),
     [workspace],
@@ -321,13 +351,17 @@ export default function App() {
   }
 
   function addBreadcrumb(breadcrumb: Breadcrumb) {
-    setWorkspace((current) => ({
-      ...current,
-      breadcrumbs: [...current.breadcrumbs, breadcrumb],
-    }))
+    const goalChanged = Boolean(
+      breadcrumb.nextGoal && breadcrumb.nextGoal !== workspace.project.currentGoal,
+    )
+    setWorkspace((current) => recordBreadcrumb(current, breadcrumb))
     setCaptureOpen(false)
-    setSavedMessage(true)
-    window.setTimeout(() => setSavedMessage(false), 3000)
+    setSavedMessage(
+      goalChanged
+        ? 'Breadcrumb added and current goal updated'
+        : 'Breadcrumb added to the project history',
+    )
+    window.setTimeout(() => setSavedMessage(''), 3000)
   }
 
   return (
@@ -379,6 +413,14 @@ export default function App() {
                 <div className="current-goal">
                   <span>Current goal</span>
                   <p>{workspace.project.currentGoal}</p>
+                  {currentGoalSource && (
+                    <button
+                      className="text-button"
+                      onClick={() => showSource(currentGoalSource.id)}
+                    >
+                      Trace goal change <ArrowRight size={15} aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="capture-callout">
@@ -542,6 +584,7 @@ export default function App() {
       {captureOpen && (
         <CaptureForm
           breadcrumbs={workspace.breadcrumbs}
+          currentGoal={workspace.project.currentGoal}
           onClose={() => setCaptureOpen(false)}
           onSave={addBreadcrumb}
           projectId={workspace.project.id}
@@ -550,7 +593,7 @@ export default function App() {
 
       <div aria-live="polite" className={`toast ${savedMessage ? 'visible' : ''}`}>
         <Check size={16} aria-hidden="true" />
-        Breadcrumb added to the project history
+        {savedMessage}
       </div>
     </div>
   )

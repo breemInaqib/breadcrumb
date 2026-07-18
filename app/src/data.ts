@@ -1,13 +1,15 @@
 import type { Workspace } from './types'
 
+const patchworkCurrentGoal =
+  'Validate that inline previews help teams publish effective onboarding flows without slowing down.'
+
 export const seedWorkspace: Workspace = {
   project: {
     id: 'patchwork',
     name: 'Patchwork',
     description:
       'A modular onboarding toolkit that helps small product teams guide new users to a meaningful first outcome.',
-    currentGoal:
-      'Validate that inline previews help teams publish effective onboarding flows without slowing down.',
+    currentGoal: patchworkCurrentGoal,
     createdAt: '2026-06-03T09:00:00.000Z',
   },
   breadcrumbs: [
@@ -89,6 +91,7 @@ export const seedWorkspace: Workspace = {
       id: 'b6',
       projectId: 'patchwork',
       buildsOnId: 'b5',
+      nextGoal: patchworkCurrentGoal,
       type: 'Milestone',
       title: 'Launch the pilot with twelve makers',
       whatHappened:
