@@ -1135,6 +1135,10 @@ textarea:focus-visible {
   display: grid;
   gap: 10px;
   align-content: start;
+  max-height: min(420px, 42vh);
+  overflow-y: auto;
+  padding-right: 5px;
+  scrollbar-gutter: stable;
 }
 
 .project-section-heading h3,
@@ -1476,7 +1480,7 @@ textarea:focus-visible {
   }
 
   .continue-panel {
-    max-width: 280px;
+    max-width: none;
   }
 
   .entry-details {
@@ -1541,6 +1545,12 @@ textarea:focus-visible {
     gap: 26px;
   }
 
+  .project-list {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
   .project-form {
     padding: 26px 0 0;
     border-top: 1px solid var(--rule);
@@ -1559,7 +1569,11 @@ textarea:focus-visible {
     font-size: 0;
   }
 
-  .sidebar nav button svg,
+  .sidebar nav button svg {
+    width: 17px;
+    height: 17px;
+  }
+
   .sidebar nav button[aria-current="page"]::before {
     inset: auto 8px -11px;
     width: auto;

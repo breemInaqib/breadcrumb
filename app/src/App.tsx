@@ -815,11 +815,12 @@ export default function App() {
   }, [workspace])
 
   useEffect(() => {
-    if (!captureOpen) return
+    if (!captureOpen && !projectChooserOpen) return
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setCaptureOpen(false)
         setEditingBreadcrumb(undefined)
+        setProjectChooserOpen(false)
       }
     }
     document.body.classList.add('drawer-open')
@@ -828,7 +829,7 @@ export default function App() {
       document.body.classList.remove('drawer-open')
       window.removeEventListener('keydown', closeOnEscape)
     }
-  }, [captureOpen])
+  }, [captureOpen, projectChooserOpen])
 
   function changeView(nextView: View) {
     setView(nextView)
@@ -925,6 +926,7 @@ export default function App() {
           Breadcrumb
         </a>
         <button
+          aria-expanded={projectChooserOpen}
           aria-haspopup="dialog"
           className="sidebar-project"
           onClick={() => setProjectChooserOpen(true)}
