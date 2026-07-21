@@ -64,7 +64,7 @@ Breadcrumb then uses this history to help users understand the larger narrative 
 ## Core product loop
 
 1. A team starts or opens a project.
-2. Someone records a meaningful decision, change, experiment, discovery, or milestone.
+2. Someone captures supporting evidence from real work, then records the meaningful decision, change, experiment, discovery, or milestone it supports.
 3. The breadcrumb becomes part of the project's chronological history.
 4. More breadcrumbs accumulate as the project evolves.
 5. A team member returns to the project and opens its story.
@@ -100,7 +100,7 @@ Users can create a breadcrumb with:
 * outcome or consequence, when known;
 * a new current goal, when the moment changes what the project is working toward;
 * date or time;
-* optional source links, validated before the breadcrumb is saved.
+* optional evidence, captured alongside the explanation rather than replacing it.
 
 Supported types:
 
@@ -111,6 +111,12 @@ Supported types:
 * Milestone
 
 Capture should remain lightweight. Breadcrumb is not intended to make teams document every action.
+
+### Evidence capture
+
+Evidence is a supporting source attached to a breadcrumb, not a stream of project activity. The prototype supports manual notes, HTTP(S) links, direct files, and a selected GitHub commit. All forms use one shared model and retain the smallest useful provenance: source kind, source, title, capture time, optional source time, URL, and relevant file or commit metadata. A draft source is not saved on its own: it receives a project and breadcrumb association only when a person saves the breadcrumb it supports.
+
+Each project may optionally name one GitHub repository (`owner/repository`) in the project chooser. The capture drawer can load a small public set of recent commits and prefill commit evidence. A person still chooses whether the commit matters and explains why through the breadcrumb. GitHub commit URLs and SHAs must match that repository; the repository cannot change after commit evidence is saved.
 
 ### Project timeline
 
@@ -144,6 +150,7 @@ Generated or derived explanations should remain traceable to the breadcrumbs tha
 * `description`
 * `currentGoal`
 * `createdAt`
+* optional `githubRepository`
 
 ### Breadcrumb
 
@@ -157,7 +164,16 @@ Generated or derived explanations should remain traceable to the breadcrumbs tha
 * `why`
 * `outcome`
 * `occurredAt`
-* `sourceLinks`
+* `evidence[]`, with source-specific optional metadata
+
+### Evidence
+
+* `id`
+* `projectId`
+* `breadcrumbId`
+* `kind` (`Manual note`, `Link`, `GitHub commit`, or `File upload`)
+* `source`, `title`, and `capturedAt`
+* optional source timestamp, URL, note, file metadata, or GitHub repository/SHA/author metadata as applicable
 
 The first version should avoid additional persistent entities unless implementation reveals a clear need for them.
 
@@ -208,7 +224,7 @@ The first version should not include:
 * complex permissions;
 * organisation management;
 * real-time collaborative editing;
-* external integrations;
+* external integrations beyond the narrow GitHub commit picker;
 * automatic activity ingestion;
 * a full project wiki;
 * complex dependency graphs;

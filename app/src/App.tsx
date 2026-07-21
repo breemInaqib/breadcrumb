@@ -1,10 +1,13 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
+  ArrowUpRight,
+  AlertTriangle,
   BookOpen,
   Check,
   ExternalLink,
   FileText,
+  GitCommit,
   History,
   Pencil,
   Plus,
@@ -14,6 +17,10 @@ import {
   breadcrumbTypes,
   type Breadcrumb,
   type BreadcrumbType,
+  evidenceKinds,
+  type Evidence,
+  type EvidenceDraft,
+  type EvidenceKind,
   type Project,
 } from './types'
 import { loadWorkspace, saveWorkspace } from './storage'
@@ -22,13 +29,15 @@ import {
   sortChronologically,
   type StorySection,
 } from './story'
-import { formatSourceLinkLabel, parseSourceLinks } from './source-links'
+import { attachEvidenceToBreadcrumb, evidenceLabel, validateEvidence } from './evidence'
+import { fetchRecentCommits, isGitHubRepository, type GitHubCommit } from './github'
 import {
   createProject,
   getEligiblePredecessors,
   openProject,
   recordBreadcrumb,
   requiresGoalForEdit,
+  updateProjectGitHubRepository,
   updateBreadcrumb,
 } from './workspace'
 import { deriveOpenThreads, type OpenThread } from './home'
@@ -47,14 +56,123 @@ function formatDate(value: string) {
   return dateFormatter.format(new Date(value))
 }
 
+function formatMonthYear(value: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(value))
+}
+
 function preferredScrollBehavior(): ScrollBehavior {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
     ? 'auto'
     : 'smooth'
 }
 
+function useDialogFocus(initialFocusSelector?: string) {
+  const dialogRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    const previouslyFocused = document.activeElement
+    const focusableSelector = [
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',')
+    const initialFocus = initialFocusSelector
+      ? dialog.querySelector<HTMLElement>(initialFocusSelector)
+      : dialog
+    const frame = window.requestAnimationFrame(() => initialFocus?.focus())
+
+    function keepFocusInside(event: KeyboardEvent) {
+      if (event.key !== 'Tab') return
+      const focusable = Array.from(
+        dialog!.querySelectorAll<HTMLElement>(focusableSelector),
+      ).filter((element) => element.offsetParent !== null)
+      if (focusable.length === 0) {
+        event.preventDefault()
+        dialog!.focus()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (
+        event.shiftKey &&
+        (document.activeElement === first || document.activeElement === dialog)
+      ) {
+        event.preventDefault()
+        last?.focus()
+      } else if (
+        !event.shiftKey &&
+        (document.activeElement === last || document.activeElement === dialog)
+      ) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    dialog.addEventListener('keydown', keepFocusInside)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      dialog.removeEventListener('keydown', keepFocusInside)
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus()
+    }
+  }, [initialFocusSelector])
+
+  return dialogRef
+}
+
 function TypeLabel({ type }: { type: BreadcrumbType }) {
   return <span className={`type-label type-${type.toLowerCase()}`}>{type}</span>
+}
+
+function EvidenceList({ evidence }: { evidence: Evidence[] }) {
+  if (evidence.length === 0) return null
+
+  return (
+    <div className="evidence-list" aria-label="Supporting evidence">
+      <div className="evidence-list-heading">
+        <span>Evidence</span>
+        <small>{evidence.length} recorded {evidence.length === 1 ? 'source' : 'sources'}</small>
+      </div>
+      <ul>
+        {evidence.map((item) => (
+          <li key={item.id}>
+            <div className="evidence-kind">
+              {item.kind === 'GitHub commit' && <GitCommit size={13} aria-hidden="true" />}
+              <span>{item.kind}</span>
+            </div>
+            <div className="evidence-copy">
+              {item.fileDataUrl ? (
+                <a download={item.filename} href={item.fileDataUrl} title={item.filename}>
+                  {item.title} <span className="sr-only">(downloads file)</span>
+                </a>
+              ) : item.url ? (
+                <a href={item.url} rel="noreferrer" target="_blank" title={item.url}>
+                  {evidenceLabel(item)} <ExternalLink size={12} aria-hidden="true" />
+                  <span className="sr-only">(opens in a new tab)</span>
+                </a>
+              ) : (
+                <strong>{evidenceLabel(item)}</strong>
+              )}
+              <small>
+                {item.repository ?? item.source} · <time dateTime={item.capturedAt}>{formatDate(item.capturedAt)}</time>
+                {item.sourceTimestamp && <> · source dated {formatDate(item.sourceTimestamp)}</>}
+                {item.author && <> · {item.author}</>}
+                {item.filename && <> · {item.filename}{item.sizeBytes !== undefined ? ` (${Math.ceil(item.sizeBytes / 1024)} KB)` : ''}</>}
+              </small>
+              {item.note && <p>{item.note}</p>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 interface TimelineProps {
@@ -147,20 +265,7 @@ export function Timeline({
                   </div>
                 )}
               </div>
-              {breadcrumb.sourceLinks.length > 0 && (
-                <div className="source-links">
-                  <span>Sources</span>
-                  {breadcrumb.sourceLinks.map((link) => (
-                    <a href={link} key={link} rel="noreferrer" target="_blank" title={link}>
-                      <span className="source-link-label">
-                        {formatSourceLinkLabel(link)}
-                      </span>
-                      <ExternalLink size={12} aria-hidden="true" />
-                      <span className="sr-only">(opens in a new tab)</span>
-                    </a>
-                  ))}
-                </div>
-              )}
+              <EvidenceList evidence={breadcrumb.evidence} />
             </article>
           </li>
         )
@@ -182,7 +287,7 @@ export function StoryEvidence({
 }: StoryEvidenceProps) {
   return (
     <div className="citations">
-      <span>Supported by</span>
+      <span>Supported by the project record</span>
       <ul aria-label="Supporting breadcrumbs">
         {sourceIds.map((sourceId) => {
           const source = breadcrumbs.find(({ id }) => id === sourceId)
@@ -199,6 +304,9 @@ export function StoryEvidence({
               >
                 <TypeLabel type={source.type} />
                 {source.title}
+                {source.evidence.length > 0 && (
+                  <small>{source.evidence.length} evidence {source.evidence.length === 1 ? 'source' : 'sources'}</small>
+                )}
                 <ArrowRight size={13} aria-hidden="true" />
               </button>
               {predecessor && (
@@ -260,6 +368,7 @@ export function StorySequence({
                   <h3>{source.title}</h3>
                 </div>
                 <p>{beat.summary}</p>
+                {source.evidence.length > 0 && <small className="story-beat-evidence">{source.evidence.length} supporting {source.evidence.length === 1 ? 'source' : 'sources'} in History</small>}
                 <button
                   aria-label={`Trace ${source.title} in project history`}
                   onClick={() => onTrace(source.id)}
@@ -406,20 +515,26 @@ function EmptyMemory({
 }
 
 interface ProjectChooserProps {
-  currentProjectId: string
+  currentProject: Project
   onClose: () => void
   onCreate: (project: Project) => void
   onOpen: (projectId: string) => void
+  onUpdateRepository: (repository: string) => string | undefined
   projects: Project[]
 }
 
 function ProjectChooser({
-  currentProjectId,
+  currentProject,
   onClose,
   onCreate,
   onOpen,
+  onUpdateRepository,
   projects,
 }: ProjectChooserProps) {
+  const dialogRef = useDialogFocus()
+  const [repository, setRepository] = useState(currentProject.githubRepository ?? '')
+  const [repositoryError, setRepositoryError] = useState('')
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
@@ -429,7 +544,14 @@ function ProjectChooser({
       description: String(form.get('description')).trim(),
       currentGoal: String(form.get('currentGoal')).trim(),
       createdAt: new Date().toISOString(),
+      githubRepository: String(form.get('githubRepository') ?? '').trim() || undefined,
     })
+  }
+
+  function handleRepositorySubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const error = onUpdateRepository(repository)
+    setRepositoryError(error ?? '')
   }
 
   return (
@@ -439,13 +561,15 @@ function ProjectChooser({
         aria-modal="true"
         className="project-chooser"
         onMouseDown={(event) => event.stopPropagation()}
+        ref={dialogRef}
         role="dialog"
+        tabIndex={-1}
       >
         <div className="drawer-header">
           <div>
-            <p className="eyebrow">Your local project memory</p>
+            <p className="eyebrow">Your project memories</p>
             <h2 id="project-chooser-title">Projects</h2>
-            <p>Each project keeps its own breadcrumbs, evidence, and derived story.</p>
+            <p>Each project keeps its own record of decisions, evidence, and the story those moments support.</p>
           </div>
           <button className="icon-button" onClick={onClose} type="button">
             <X size={19} aria-hidden="true" />
@@ -456,44 +580,78 @@ function ProjectChooser({
         <div className="project-chooser-body">
           <section aria-labelledby="open-project-heading" className="project-list">
             <div className="project-section-heading">
-              <p className="eyebrow">Continue an existing memory</p>
-              <h3 id="open-project-heading">Open a project</h3>
+              <p className="eyebrow">Continue a project memory</p>
+              <h3 id="open-project-heading">Return to a project</h3>
             </div>
             {projects.map((project) => (
               <button
-                aria-current={project.id === currentProjectId ? 'true' : undefined}
+                aria-current={project.id === currentProject.id ? 'true' : undefined}
                 className="project-choice"
                 key={project.id}
                 onClick={() => onOpen(project.id)}
                 type="button"
               >
-                <span>{project.id === currentProjectId ? 'Current project' : 'Open project'}</span>
+                <span className="project-choice-heading flex min-w-0 items-center justify-between gap-3">
+                  <span>{project.id === currentProject.id ? 'Current' : 'Project'}</span>
+                  {project.id !== currentProject.id && (
+                    <ArrowUpRight
+                      className="project-choice-affordance shrink-0"
+                      size={15}
+                      aria-hidden="true"
+                    />
+                  )}
+                </span>
                 <strong>{project.name}</strong>
                 <small>{project.currentGoal}</small>
               </button>
             ))}
           </section>
 
-          <form className="project-form" onSubmit={handleSubmit}>
-            <p className="eyebrow">Start a new memory</p>
-            <h3>Create a project</h3>
-            <label>
-              <span>Project name</span>
-              <input name="name" placeholder="e.g. First-run guide" required />
-            </label>
-            <label>
-              <span>What is it for?</span>
-              <textarea name="description" placeholder="A concise project description" required rows={2} />
-            </label>
-            <label>
-              <span>Current goal</span>
-              <textarea name="currentGoal" placeholder="What is this project trying to achieve?" required rows={2} />
-            </label>
-            <button className="button-primary" type="submit">
-              <Plus size={17} aria-hidden="true" />
-              Create project
-            </button>
-          </form>
+          <div className="project-actions">
+            <form className="repository-form" onSubmit={handleRepositorySubmit}>
+              <p className="eyebrow">Connected evidence</p>
+              <h3>GitHub repository</h3>
+              <p>One optional public repository can supply commit evidence for {currentProject.name}. Loading activity never creates a breadcrumb.</p>
+              <label>
+                <span>Repository <small>Optional</small></span>
+                <input
+                  aria-describedby="repository-helper"
+                  onChange={(event) => { setRepository(event.target.value); setRepositoryError('') }}
+                  pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"
+                  placeholder="owner/repository"
+                  value={repository}
+                />
+              </label>
+              <small id="repository-helper">After a commit is attached, this association is kept to preserve its provenance.</small>
+              {repositoryError && <p className="field-error" role="alert">{repositoryError}</p>}
+              <button className="button-secondary" type="submit">Save repository</button>
+            </form>
+
+            <form className="project-form" onSubmit={handleSubmit}>
+              <p className="eyebrow">Start a project memory</p>
+              <h3>Create a project</h3>
+              <label>
+                <span>Project name</span>
+                <input name="name" placeholder="e.g. First-run guide" required />
+              </label>
+              <label>
+                <span>What is this work about?</span>
+                <textarea name="description" placeholder="A concise description of the work" required rows={2} />
+              </label>
+              <label>
+                <span>Where should it go next?</span>
+                <textarea name="currentGoal" placeholder="The outcome this project is working toward" required rows={2} />
+              </label>
+              <label>
+                <span>GitHub repository <small>Optional</small></span>
+                <input name="githubRepository" pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+" placeholder="owner/repository" />
+              </label>
+              <button className="button-primary" type="submit">
+                <Plus size={17} aria-hidden="true" />
+                Create project
+              </button>
+            </form>
+          </div>
         </div>
       </section>
     </div>
@@ -507,6 +665,7 @@ interface CaptureFormProps {
   onClose: () => void
   onSave: (breadcrumb: Breadcrumb) => void
   projectId: string
+  githubRepository?: string
   requiresGoal: boolean
 }
 
@@ -517,8 +676,10 @@ function CaptureForm({
   onClose,
   onSave,
   projectId,
+  githubRepository,
   requiresGoal,
 }: CaptureFormProps) {
+  const dialogRef = useDialogFocus('[data-dialog-autofocus]')
   const [type, setType] = useState<BreadcrumbType>(
     editingBreadcrumb?.type ?? 'Decision',
   )
@@ -528,7 +689,23 @@ function CaptureForm({
   const [occurredAt, setOccurredAt] = useState(
     editingBreadcrumb?.occurredAt.slice(0, 10) ?? inputDate,
   )
-  const [sourceError, setSourceError] = useState('')
+  const [evidence, setEvidence] = useState<EvidenceDraft[]>(editingBreadcrumb?.evidence ?? [])
+  const [evidenceKind, setEvidenceKind] = useState<EvidenceKind>('Manual note')
+  const [evidenceTitle, setEvidenceTitle] = useState('')
+  const [evidenceSource, setEvidenceSource] = useState('')
+  const [evidenceUrl, setEvidenceUrl] = useState('')
+  const [evidenceCommitSha, setEvidenceCommitSha] = useState('')
+  const [evidenceNote, setEvidenceNote] = useState('')
+  const [evidenceCapturedAt, setEvidenceCapturedAt] = useState(
+    editingBreadcrumb?.occurredAt.slice(0, 10) ?? inputDate,
+  )
+  const [evidenceSourceTimestamp, setEvidenceSourceTimestamp] = useState('')
+  const [evidenceAuthor, setEvidenceAuthor] = useState('')
+  const [evidenceError, setEvidenceError] = useState('')
+  const [fileEvidence, setFileEvidence] = useState<Pick<Evidence, 'filename' | 'mimeType' | 'sizeBytes' | 'fileDataUrl'>>()
+  const [recentCommits, setRecentCommits] = useState<GitHubCommit[]>([])
+  const [githubError, setGithubError] = useState('')
+  const [loadingCommits, setLoadingCommits] = useState(false)
   const isEditing = Boolean(editingBreadcrumb)
   const priorBreadcrumbs = occurredAt
     ? getEligiblePredecessors(
@@ -554,27 +731,121 @@ function CaptureForm({
     if (!predecessorStillAvailable) setBuildsOnId('')
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    const date = String(form.get('occurredAt'))
-    const sourceResult = parseSourceLinks(String(form.get('sourceLinks') ?? ''))
-
-    if (sourceResult.invalidLinks.length > 0) {
-      const sourceInput = event.currentTarget.elements.namedItem('sourceLinks')
-      setSourceError(
-        sourceResult.invalidLinks.length === 1
-          ? 'Enter a full link beginning with http:// or https://.'
-          : `Fix all ${sourceResult.invalidLinks.length} links. Start each with http:// or https://.`,
-      )
-      if (sourceInput instanceof HTMLInputElement) sourceInput.focus()
+  function addEvidence() {
+    if (!evidenceCapturedAt) {
+      setEvidenceError('Choose when this evidence was recorded.')
       return
     }
+    const error = validateEvidence(
+      evidenceKind,
+      evidenceTitle,
+      evidenceUrl,
+      evidenceCommitSha,
+      Boolean(fileEvidence?.fileDataUrl),
+      githubRepository,
+    )
+    if (error) {
+      setEvidenceError(error)
+      return
+    }
+    setEvidence((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        kind: evidenceKind,
+        source: evidenceSource.trim() || (evidenceKind === 'GitHub commit' ? 'GitHub' : evidenceKind === 'Link' ? 'Web link' : 'Manual record'),
+        title: evidenceTitle.trim(),
+        capturedAt: new Date(`${evidenceCapturedAt}T12:00:00`).toISOString(),
+        url: evidenceKind === 'Manual note' ? undefined : evidenceUrl.trim(),
+        commitSha: evidenceKind === 'GitHub commit' ? evidenceCommitSha.trim() : undefined,
+        note: evidenceNote.trim() || undefined,
+        filename: evidenceKind === 'File upload' ? fileEvidence?.filename : undefined,
+        mimeType: evidenceKind === 'File upload' ? fileEvidence?.mimeType : undefined,
+        sizeBytes: evidenceKind === 'File upload' ? fileEvidence?.sizeBytes : undefined,
+        fileDataUrl: evidenceKind === 'File upload' ? fileEvidence?.fileDataUrl : undefined,
+        repository: evidenceKind === 'GitHub commit' ? githubRepository : undefined,
+        author: evidenceKind === 'GitHub commit' ? evidenceAuthor.trim() || undefined : undefined,
+        sourceTimestamp: evidenceSourceTimestamp
+          ? new Date(`${evidenceSourceTimestamp}T12:00:00`).toISOString()
+          : undefined,
+      },
+    ])
+    setEvidenceTitle('')
+    setEvidenceSource('')
+    setEvidenceUrl('')
+    setEvidenceCommitSha('')
+    setEvidenceNote('')
+    setFileEvidence(undefined)
+    setEvidenceCapturedAt(occurredAt)
+    setEvidenceSourceTimestamp('')
+    setEvidenceAuthor('')
+    setEvidenceError('')
+  }
 
-    setSourceError('')
+  async function selectFile(file?: File) {
+    if (!file) return
+    if (file.size > 1_500_000) {
+      setEvidenceError('Files must be 1.5 MB or smaller in this local-first prototype.')
+      return
+    }
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject()
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(file)
+    }).catch(() => '')
+    if (!dataUrl) {
+      setEvidenceError('This file could not be read. Choose another file and try again.')
+      return
+    }
+    setEvidenceKind('File upload')
+    setEvidenceTitle(file.name)
+    setEvidenceSource('Local file')
+    setFileEvidence({ filename: file.name, mimeType: file.type || 'application/octet-stream', sizeBytes: file.size, fileDataUrl: dataUrl })
+    setEvidenceError('')
+  }
 
+  async function loadRecentCommits() {
+    if (!githubRepository) {
+      setGithubError('Associate this project with a GitHub repository when creating it before loading commits.')
+      return
+    }
+    setLoadingCommits(true)
+    setGithubError('')
+    try {
+      setRecentCommits(await fetchRecentCommits(githubRepository))
+    } catch (error) {
+      setGithubError(error instanceof Error ? error.message : 'GitHub could not load commits.')
+    } finally {
+      setLoadingCommits(false)
+    }
+  }
+
+  function selectCommit(commit: GitHubCommit) {
+    setEvidenceKind('GitHub commit')
+    setEvidenceTitle(commit.message)
+    setEvidenceSource(githubRepository ?? 'GitHub')
+    setEvidenceUrl(commit.url)
+    setEvidenceCommitSha(commit.sha)
+    setEvidenceAuthor(commit.author)
+    setEvidenceSourceTimestamp(commit.timestamp.slice(0, 10))
+    setEvidenceError('')
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (
+      evidenceTitle.trim() || evidenceSource.trim() || evidenceUrl.trim() ||
+      evidenceCommitSha.trim() || evidenceNote.trim() || fileEvidence
+    ) {
+      setEvidenceError('Add this evidence or clear the draft before saving the breadcrumb.')
+      return
+    }
+    const form = new FormData(event.currentTarget)
+    const date = String(form.get('occurredAt'))
+    const breadcrumbId = editingBreadcrumb?.id ?? crypto.randomUUID()
     onSave({
-      id: editingBreadcrumb?.id ?? crypto.randomUUID(),
+      id: breadcrumbId,
       projectId,
       buildsOnId: String(form.get('buildsOnId') ?? '') || undefined,
       nextGoal: String(form.get('nextGoal') ?? '').trim() || undefined,
@@ -584,7 +855,7 @@ function CaptureForm({
       why: String(form.get('why')).trim(),
       outcome: String(form.get('outcome') ?? '').trim(),
       occurredAt: new Date(`${date}T12:00:00`).toISOString(),
-      sourceLinks: sourceResult.links,
+      evidence: attachEvidenceToBreadcrumb(evidence, projectId, breadcrumbId),
     })
   }
 
@@ -595,12 +866,14 @@ function CaptureForm({
         aria-modal="true"
         className="capture-drawer"
         onMouseDown={(event) => event.stopPropagation()}
+        ref={dialogRef}
         role="dialog"
+        tabIndex={-1}
       >
         <div className="drawer-header">
           <div>
             <p className="eyebrow">
-              {isEditing ? 'Correct the record' : 'Capture significance, not activity'}
+              {isEditing ? 'Correct the record' : 'Capture a moment worth returning to'}
             </p>
             <h2 id="capture-title">
               {isEditing ? 'Edit breadcrumb' : 'Add a breadcrumb'}
@@ -608,7 +881,7 @@ function CaptureForm({
             <p>
               {isEditing
                 ? 'Update this moment while keeping its place in the project’s history.'
-                : 'Record a moment that changed the project’s understanding or direction.'}
+                : 'Record what changed, why it mattered, and the evidence that can help someone trace it later.'}
             </p>
           </div>
           <button className="icon-button" onClick={onClose} type="button">
@@ -640,10 +913,10 @@ function CaptureForm({
             <label>
               <span>Short title</span>
               <input
-                autoFocus
+                data-dialog-autofocus
                 defaultValue={editingBreadcrumb?.title}
                 name="title"
-                placeholder="Name the turning point"
+                placeholder="Name the meaningful moment"
                 required
               />
             </label>
@@ -682,11 +955,11 @@ function CaptureForm({
             </label>
 
             <label>
-              <span>Why it happened</span>
+              <span>Why it mattered</span>
               <textarea
                 name="why"
                 defaultValue={editingBreadcrumb?.why}
-                placeholder="Preserve the reasoning or evidence behind it."
+                placeholder="Preserve the reasoning, context, or evidence behind it."
                 required
                 rows={3}
               />
@@ -734,31 +1007,94 @@ function CaptureForm({
                   value={occurredAt}
                 />
               </label>
-              <div className="capture-field">
-                <label>
-                  <span>Source links <small>Optional</small></span>
-                  <input
-                    aria-describedby={sourceError
-                      ? 'source-links-helper source-links-error'
-                      : 'source-links-helper'}
-                    aria-invalid={sourceError ? 'true' : undefined}
-                    defaultValue={editingBreadcrumb?.sourceLinks.join(', ')}
-                    name="sourceLinks"
-                    onChange={() => setSourceError('')}
-                    placeholder="https://example.com/research"
-                    type="text"
-                  />
-                </label>
-                <small className="capture-helper" id="source-links-helper">
-                  Use full web links. Separate multiple links with commas.
-                </small>
-                {sourceError && (
-                  <p className="field-error" id="source-links-error" role="alert">
-                    {sourceError}
-                  </p>
-                )}
-              </div>
             </div>
+
+            <fieldset className="evidence-capture">
+              <legend>Supporting evidence <small>Optional</small></legend>
+              <p className="capture-helper">Evidence supports this explanation. It never creates a breadcrumb or changes the project story on its own.</p>
+              {evidence.length > 0 && (
+                <ul className="evidence-draft-list" aria-label="Evidence attached to this breadcrumb">
+                  {evidence.map((item) => (
+                    <li key={item.id}>
+                      <div>
+                        <strong>{item.title}</strong>
+                        <small>{item.kind} · {item.source} · recorded {formatDate(item.capturedAt)}</small>
+                      </div>
+                      <button aria-label={`Remove ${item.title}`} onClick={() => setEvidence((current) => current.filter(({ id }) => id !== item.id))} type="button">Remove</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="evidence-fields">
+                <label>
+                  <span>Kind</span>
+                  <select onChange={(event) => { setEvidenceKind(event.target.value as EvidenceKind); setEvidenceError('') }} value={evidenceKind}>
+                    {evidenceKinds.map((kind) => <option key={kind} value={kind}>{kind}</option>)}
+                  </select>
+                </label>
+                {evidenceKind === 'File upload' && (
+                  <label>
+                    <span>Choose file</span>
+                    <input accept="*/*" onChange={(event) => selectFile(event.target.files?.[0])} type="file" />
+                    {fileEvidence && <small className="capture-helper">{fileEvidence.filename} · {Math.ceil((fileEvidence.sizeBytes ?? 0) / 1024)} KB</small>}
+                  </label>
+                )}
+                <label>
+                  <span>Title</span>
+                  <input onChange={(event) => { setEvidenceTitle(event.target.value); setEvidenceError('') }} placeholder={evidenceKind === 'GitHub commit' ? 'Commit message' : 'What should this source be called?'} type="text" value={evidenceTitle} />
+                </label>
+                <label>
+                  <span>Source <small>Optional</small></span>
+                  <input onChange={(event) => setEvidenceSource(event.target.value)} placeholder={evidenceKind === 'GitHub commit' ? 'owner/repository' : 'Where this came from'} type="text" value={evidenceSource} />
+                </label>
+                <label>
+                  <span>Recorded on</span>
+                  <input onChange={(event) => setEvidenceCapturedAt(event.target.value)} required type="date" value={evidenceCapturedAt} />
+                </label>
+                {evidenceKind !== 'Manual note' && (
+                  <label>
+                    <span>{evidenceKind === 'GitHub commit' ? 'Commit URL' : 'URL'}</span>
+                    <input onChange={(event) => { setEvidenceUrl(event.target.value); setEvidenceError('') }} placeholder="https://…" type="url" value={evidenceUrl} />
+                  </label>
+                )}
+                {evidenceKind === 'GitHub commit' && (
+                  <>
+                    <label>
+                      <span>Commit SHA</span>
+                      <input onChange={(event) => { setEvidenceCommitSha(event.target.value); setEvidenceError('') }} placeholder="e.g. a1b2c3d" type="text" value={evidenceCommitSha} />
+                    </label>
+                    <label>
+                      <span>Author <small>Optional</small></span>
+                      <input onChange={(event) => setEvidenceAuthor(event.target.value)} placeholder="Commit author" type="text" value={evidenceAuthor} />
+                    </label>
+                    <label>
+                      <span>Commit timestamp <small>Optional</small></span>
+                      <input onChange={(event) => setEvidenceSourceTimestamp(event.target.value)} type="date" value={evidenceSourceTimestamp} />
+                    </label>
+                  </>
+                )}
+                <label className="evidence-note-field">
+                  <span>Context <small>Optional</small></span>
+                  <textarea onChange={(event) => setEvidenceNote(event.target.value)} placeholder="A brief note that helps someone interpret this evidence." rows={2} value={evidenceNote} />
+                </label>
+              </div>
+              {evidenceKind === 'GitHub commit' && (
+                <div className="github-picker">
+                  <div>
+                    <strong>Recent commits{githubRepository ? ` from ${githubRepository}` : ''}</strong>
+                    <small>Choose one to prefill this evidence; it still needs to support this breadcrumb’s explanation.</small>
+                  </div>
+                  <button className="button-secondary" disabled={loadingCommits || !githubRepository} onClick={loadRecentCommits} type="button">
+                    {loadingCommits ? 'Loading commits…' : 'Load recent commits'}
+                  </button>
+                  {githubError && <p className="field-error" role="alert">{githubError}</p>}
+                  {recentCommits.length > 0 && <ul>{recentCommits.map((commit) => <li key={commit.sha}><button onClick={() => selectCommit(commit)} type="button"><strong>{commit.message}</strong><small>{commit.author} · {commit.sha.slice(0, 7)} · {formatDate(commit.timestamp)}</small></button></li>)}</ul>}
+                  {!loadingCommits && !githubError && recentCommits.length === 0 && githubRepository && <p className="capture-helper">Load a small recent list, then deliberately choose the commit that supports this breadcrumb.</p>}
+                </div>
+              )}
+              {evidenceError && <p className="field-error" role="alert">{evidenceError}</p>}
+              <button className="button-secondary add-evidence-button" onClick={addEvidence} type="button">Add evidence</button>
+            </fieldset>
           </div>
 
           <div className="drawer-actions">
@@ -781,6 +1117,7 @@ export default function App() {
   const [captureOpen, setCaptureOpen] = useState(false)
   const [editingBreadcrumb, setEditingBreadcrumb] = useState<Breadcrumb>()
   const [savedMessage, setSavedMessage] = useState('')
+  const [storageIssue, setStorageIssue] = useState('')
   const [tracedBreadcrumbId, setTracedBreadcrumbId] = useState<string>()
   const [projectChooserOpen, setProjectChooserOpen] = useState(false)
 
@@ -811,7 +1148,11 @@ export default function App() {
   )
 
   useEffect(() => {
-    saveWorkspace(workspace)
+    setStorageIssue(
+      saveWorkspace(workspace)
+        ? ''
+        : 'Changes could not be stored in this browser. Keep this tab open or free local storage before reloading.',
+    )
   }, [workspace])
 
   useEffect(() => {
@@ -876,10 +1217,15 @@ export default function App() {
   }
 
   function selectProject(projectId: string) {
+    const nextProject = workspace.projects.find(({ id }) => id === projectId)
     setWorkspace((current) => openProject(current, projectId))
     setProjectChooserOpen(false)
     setView('overview')
     setTracedBreadcrumbId(undefined)
+    if (nextProject && nextProject.id !== workspace.project.id) {
+      setSavedMessage(`${nextProject.name} opened`)
+      window.setTimeout(() => setSavedMessage(''), 3000)
+    }
   }
 
   function addProject(project: Project) {
@@ -928,13 +1274,20 @@ export default function App() {
         <button
           aria-expanded={projectChooserOpen}
           aria-haspopup="dialog"
-          className="sidebar-project"
+          className="sidebar-project group min-w-0"
           onClick={() => setProjectChooserOpen(true)}
           type="button"
         >
-          <span>Project</span>
-          <strong>{workspace.project.name}</strong>
-          <small>Switch or create</small>
+          <span className="sidebar-project-label">Current project</span>
+          <span className="sidebar-project-name-row flex min-w-0 items-start justify-between gap-3">
+            <strong className="min-w-0">{workspace.project.name}</strong>
+            <ArrowUpRight
+              className="sidebar-project-affordance shrink-0"
+              size={15}
+              aria-hidden="true"
+            />
+          </span>
+          <small className="sidebar-project-action">Switch or create</small>
         </button>
         <nav aria-label="Project navigation">
           <button
@@ -943,6 +1296,7 @@ export default function App() {
           >
             <BookOpen size={17} aria-hidden="true" />
             Overview
+            <span className="nav-purpose">Where are we now?</span>
           </button>
           <button
             aria-current={view === 'history' ? 'page' : undefined}
@@ -950,6 +1304,7 @@ export default function App() {
           >
             <History size={17} aria-hidden="true" />
             History
+            <span className="nav-purpose">What happened?</span>
           </button>
           <button
             aria-current={view === 'story' ? 'page' : undefined}
@@ -957,23 +1312,47 @@ export default function App() {
           >
             <FileText size={17} aria-hidden="true" />
             Story
+            <span className="nav-purpose">How did we get here?</span>
           </button>
         </nav>
         <p className="sidebar-note">
-          Consequential moments, preserved with their reasons.
+          Meaningful moments, preserved with their context.
         </p>
       </aside>
 
       <main id="top">
-        {view === 'overview' && (
-          <>
-            <header className="project-header">
+      {view === 'overview' && (
+        <>
+          <picture className="project-banner">
+            <source
+              media="(max-width: 720px), (orientation: portrait)"
+              srcSet="/dreamy-path-to-a-stary-flag.png"
+            />
+            <img alt="" src="/serene-pastel-path-to-the-flag.png" />
+          </picture>
+          <header className="project-header">
               <div className="project-intro">
-                <p className="eyebrow">Project workspace</p>
+                <p className="eyebrow">Overview · Where are we now?</p>
                 <h1>{workspace.project.name}</h1>
                 <p className="project-description">{workspace.project.description}</p>
+                <dl className="project-memory-meta" aria-label="Project memory details">
+                  <div>
+                    <dt>Memory began</dt>
+                    <dd>{formatMonthYear(workspace.project.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>Recorded moments</dt>
+                    <dd>{ordered.length}</dd>
+                  </div>
+                  {latestBreadcrumb && (
+                    <div>
+                      <dt>Last recorded</dt>
+                      <dd>{formatDate(latestBreadcrumb.occurredAt)}</dd>
+                    </div>
+                  )}
+                </dl>
                 <div className="current-goal">
-                  <span>Current goal</span>
+                  <span>What the project is working toward</span>
                   <p>{workspace.project.currentGoal}</p>
                   {currentGoalSource && (
                     <button
@@ -993,7 +1372,7 @@ export default function App() {
                   {hasHistory ? 'Add the next breadcrumb' : 'Add first breadcrumb'}
                 </button>
                 <p className="continue-helper">
-                  Capture a decision, change, experiment, discovery, or milestone.
+                  Record a decision, change, experiment, discovery, or milestone when it changes the project’s understanding or direction.
                 </p>
                 <div className="continue-links">
                   {latestBreadcrumb && (
@@ -1001,20 +1380,20 @@ export default function App() {
                       className="text-button"
                       onClick={() => showSource(latestBreadcrumb.id)}
                     >
-                      Review the latest turning point
+                      Revisit the latest moment
                       <ArrowRight size={15} aria-hidden="true" />
                     </button>
                   )}
                   {hasHistory && (
                     <button className="text-button" onClick={() => changeView('story')}>
-                      Open Story so far <ArrowRight size={15} aria-hidden="true" />
+                      Read the story so far <ArrowRight size={15} aria-hidden="true" />
                     </button>
                   )}
                 </div>
                 {latestBreadcrumb && (
                   <aside className="resume-context" aria-labelledby="resume-heading">
                     <div className="resume-meta">
-                      <span id="resume-heading">Where things stand</span>
+                      <span id="resume-heading">Latest recorded moment</span>
                       <time dateTime={latestBreadcrumb.occurredAt}>
                         {formatDate(latestBreadcrumb.occurredAt)}
                       </time>
@@ -1038,8 +1417,8 @@ export default function App() {
             <section className="content-section">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">What changed recently</p>
-                  <h2>Recent progress</h2>
+                  <p className="eyebrow">Recent record</p>
+                  <h2>What changed lately</h2>
                 </div>
                 <button className="text-button" onClick={() => changeView('history')}>
                   View full history <ArrowRight size={15} aria-hidden="true" />
@@ -1049,12 +1428,12 @@ export default function App() {
                 <RecentProgress breadcrumbs={ordered} onTrace={showSource} />
               ) : (
                 <EmptyMemory
-                  description="Capture what changed, why it mattered, and what it led to. That first breadcrumb gives the project a history to return to."
-                  eyebrow="Your project memory starts here"
+                  description="A breadcrumb records a meaningful change with the context behind it. Start with one decision, discovery, experiment, change, or milestone that this project should not lose."
+                  eyebrow="This project has no recorded moments yet"
                   id="overview-empty-memory"
                   onAdd={() => openBreadcrumbForm()}
                   showAction={false}
-                  title="Record the first meaningful moment"
+                  title="Give this project a memory to build on"
                 />
               )}
             </section>
@@ -1073,12 +1452,12 @@ export default function App() {
                 <p className="eyebrow">
                   {hasHistory
                     ? `Derived from ${ordered.length} ${ordered.length === 1 ? 'breadcrumb' : 'breadcrumbs'}`
-                    : 'No recorded moments yet'}
+                  : 'The project record is waiting to begin'}
                 </p>
-                <h2>Story so far</h2>
+                <h2>The story so far</h2>
                 <p>
                   {!hasHistory
-                    ? 'The Story so far will take shape after the first meaningful moment is recorded.'
+                    ? 'The project’s Story will take shape once its first meaningful moment is recorded.'
                     : ordered.length === 1
                     ? 'One meaningful moment starts this project’s recorded story.'
                     : `Follow the recorded path from “${ordered[0]?.title}” to “${latestBreadcrumb?.title}.”`}
@@ -1099,12 +1478,12 @@ export default function App() {
               <div>
                 <p className="eyebrow">
                   {hasHistory
-                    ? `${ordered.length} meaningful ${ordered.length === 1 ? 'moment' : 'moments'}`
-                    : 'No meaningful moments yet'}
+                  ? `History · ${ordered.length} recorded ${ordered.length === 1 ? 'moment' : 'moments'}`
+                    : 'History · no recorded moments yet'}
                 </p>
-                <h1>Project history</h1>
+                <h1>What happened</h1>
                 <p>
-                  The decisions, changes, experiments, discoveries, and milestones that shaped {workspace.project.name}.
+                  A chronological record of the decisions, changes, experiments, discoveries, and milestones that shaped {workspace.project.name}. Open any moment to revisit its explanation and supporting evidence.
                 </p>
               </div>
               {hasHistory && (
@@ -1123,11 +1502,11 @@ export default function App() {
               />
             ) : (
               <EmptyMemory
-                description="Record a decision, change, experiment, discovery, or milestone so future teammates can understand how the project got here."
-                eyebrow="Project history starts here"
+                description="A history begins with one meaningful moment. Record what changed, why it mattered, and any evidence that will help future readers understand it."
+                eyebrow="History is the project’s record of what happened"
                 id="history-empty-memory"
                 onAdd={() => openBreadcrumbForm()}
-                title="Give the project a first turning point"
+                title="Record the first moment worth tracing"
               />
             )}
           </section>
@@ -1137,12 +1516,12 @@ export default function App() {
           <section className="page-view story-view">
             <header className="story-header">
               <div>
-                <p className="eyebrow">How did this project get here?</p>
-                <h1>Story so far</h1>
+                <p className="eyebrow">Story · How did we get here?</p>
+                <h1>The story so far</h1>
                 <p>
                   {hasHistory
-                    ? `A concise account derived from ${ordered.length} recorded ${ordered.length === 1 ? 'moment' : 'moments'}. Every section points back to its evidence.`
-                    : 'The story will begin when the project records its first meaningful moment.'}
+                    ? `A concise account derived from ${ordered.length} recorded ${ordered.length === 1 ? 'moment' : 'moments'}. Every section points to supporting breadcrumbs, whose evidence remains reviewable in History.`
+                    : 'The story begins when the project records its first meaningful moment and the context behind it.'}
                 </p>
               </div>
               {hasHistory && (
@@ -1181,11 +1560,11 @@ export default function App() {
               </div>
             ) : (
               <EmptyMemory
-                description="Once a breadcrumb captures what happened and why, Breadcrumb can begin a traceable Story so the project’s path is easy to revisit."
-                eyebrow="Story needs evidence"
+                description="Story turns the project’s recorded moments into a concise, traceable account. It begins after the first breadcrumb captures what happened and why it mattered."
+                eyebrow="Story is built from the project record"
                 id="story-empty-memory"
                 onAdd={() => openBreadcrumbForm()}
-                title="Record the first moment worth remembering"
+                title="Give the story its first source"
               />
             )}
           </section>
@@ -1200,23 +1579,46 @@ export default function App() {
           onClose={closeBreadcrumbForm}
           onSave={saveBreadcrumb}
           projectId={workspace.project.id}
+          githubRepository={workspace.project.githubRepository}
           requiresGoal={requiresGoalForEdit(editingBreadcrumb?.id, currentGoalSource?.id)}
         />
       )}
 
       {projectChooserOpen && (
         <ProjectChooser
-          currentProjectId={workspace.project.id}
+          currentProject={workspace.project}
           onClose={() => setProjectChooserOpen(false)}
           onCreate={addProject}
           onOpen={selectProject}
+          onUpdateRepository={(repository) => {
+            const nextRepository = repository.trim()
+            if (nextRepository && !isGitHubRepository(nextRepository)) {
+              return 'Enter a repository as owner/repository.'
+            }
+            const updated = updateProjectGitHubRepository(
+              workspace,
+              workspace.project.id,
+              nextRepository,
+            )
+            if (updated === workspace) {
+              return 'This project already has commit evidence from its configured repository, so that provenance cannot be changed.'
+            }
+            setWorkspace(updated)
+            setSavedMessage(nextRepository ? 'GitHub repository saved for this project' : 'GitHub repository removed from this project')
+            window.setTimeout(() => setSavedMessage(''), 3000)
+            return undefined
+          }}
           projects={workspace.projects}
         />
       )}
 
-      <div aria-live="polite" className={`toast ${savedMessage ? 'visible' : ''}`}>
-        <Check size={16} aria-hidden="true" />
-        {savedMessage}
+      <div
+        aria-live={storageIssue ? 'assertive' : 'polite'}
+        className={`toast ${savedMessage || storageIssue ? 'visible' : ''} ${storageIssue ? 'warning' : ''}`}
+        role={storageIssue ? 'alert' : 'status'}
+      >
+        {storageIssue ? <AlertTriangle size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}
+        {storageIssue || savedMessage}
       </div>
     </div>
   )

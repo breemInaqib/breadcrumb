@@ -47,7 +47,23 @@ Following a citation, causal predecessor, current goal, or resumption cue tempor
 
 ## Preserve source links explicitly
 
-Capture accepts complete HTTP or HTTPS source links, normalizes equivalent URLs, and removes duplicates. If any entry is incomplete or unsupported, the breadcrumb remains unsaved and the form identifies the source field and explains how to repair it. Evidence is never discarded behind a success message.
+Link evidence retains its original HTTP(S) URL, title, source, and capture time. The capture drawer checks only that a provided URL is a complete HTTP(S) address; it does not scrape, extract, or reinterpret the linked work.
+
+## Keep evidence subordinate to the breadcrumb
+
+Evidence is stored on a breadcrumb using one local model with a source kind and small provenance fields. Manual notes, links, files, and GitHub commits all enter through the existing capture drawer; none creates a breadcrumb or changes the Story by itself. A draft is bound to the saved breadcrumb and its project at save time, so a source cannot be silently reassigned. Story continues to cite breadcrumbs, and History exposes the evidence that supports each cited moment.
+
+## Make direct files local and bounded
+
+Direct uploads are encoded as browser-local data URLs so that a saved workspace can reload without a server. The prototype limits uploads to 1.5 MB and retains name, MIME type, size, and capture time. It deliberately performs no OCR, content extraction, analysis, or remote upload.
+
+## Keep GitHub connected evidence narrow
+
+A project may have one optional `owner/repository` association, configurable from the project chooser. The capture drawer uses GitHub's public recent-commits endpoint to help select one commit, preserving repository, SHA, message, author, timestamp, and URL. Commit URLs and SHAs must match that repository, and the association remains fixed after commit evidence is saved. There is no authentication, background sync, webhook, pull request, issue, or automatic breadcrumb path.
+
+## Normalize browser-local workspaces at the boundary
+
+Saved browser data is untrusted input. Loading normalizes projects, breadcrumbs, evidence, dates, source URLs, file payload bounds, and causal links before the workspace reaches the interface. Legacy `sourceLinks` migrate into typed link evidence; malformed sources and impossible associations are ignored while the usable project record stays available. Saving uses the same normalization path and reports failure without crashing the workspace.
 
 ## Name sources from their destination
 

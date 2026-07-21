@@ -26,9 +26,10 @@ const relationByType: Record<BreadcrumbType, StoryBeat['relation']> = {
 }
 
 export function sortChronologically(breadcrumbs: Breadcrumb[]) {
-  return [...breadcrumbs].sort(
-    (a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime(),
-  )
+  return [...breadcrumbs].sort((a, b) => {
+    const chronology = new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime()
+    return chronology || a.id.localeCompare(b.id)
+  })
 }
 
 export function selectStoryThread(

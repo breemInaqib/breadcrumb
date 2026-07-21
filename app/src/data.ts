@@ -35,7 +35,7 @@ export const seedWorkspace: Workspace = {
       outcome:
         'We built six templates around activation moments common to early-stage products.',
       occurredAt: '2026-06-05T14:00:00.000Z',
-      sourceLinks: ['https://research.example.com/patchwork/interviews'],
+      evidence: [{ id: 'e1', projectId: 'patchwork', breadcrumbId: 'b1', kind: 'Link', source: 'Research archive', title: 'Interview synthesis', capturedAt: '2026-06-05T14:00:00.000Z', url: 'https://research.example.com/patchwork/interviews' }],
     },
     {
       id: 'b2',
@@ -50,7 +50,7 @@ export const seedWorkspace: Workspace = {
       outcome:
         'Teams started quickly, but every team needed to restructure the template before it matched their product.',
       occurredAt: '2026-06-16T16:30:00.000Z',
-      sourceLinks: ['https://research.example.com/patchwork/template-sessions'],
+      evidence: [{ id: 'e2', projectId: 'patchwork', breadcrumbId: 'b2', kind: 'Link', source: 'Research archive', title: 'Template sessions', capturedAt: '2026-06-16T16:30:00.000Z', url: 'https://research.example.com/patchwork/template-sessions' }],
     },
     {
       id: 'b3',
@@ -65,7 +65,7 @@ export const seedWorkspace: Workspace = {
       outcome:
         'We reframed the product around composing steps from reusable sections.',
       occurredAt: '2026-06-19T11:00:00.000Z',
-      sourceLinks: ['https://research.example.com/patchwork/session-notes'],
+      evidence: [{ id: 'e3', projectId: 'patchwork', breadcrumbId: 'b3', kind: 'Link', source: 'Research archive', title: 'Session notes', capturedAt: '2026-06-19T11:00:00.000Z', url: 'https://research.example.com/patchwork/session-notes' }],
     },
     {
       id: 'b4',
@@ -80,7 +80,7 @@ export const seedWorkspace: Workspace = {
       outcome:
         'The new prototype cut structural workarounds and made changes easier to explain.',
       occurredAt: '2026-06-24T15:15:00.000Z',
-      sourceLinks: ['https://research.example.com/patchwork/composer-prototype'],
+      evidence: [{ id: 'e4', projectId: 'patchwork', breadcrumbId: 'b4', kind: 'Link', source: 'Research archive', title: 'Composer prototype', capturedAt: '2026-06-24T15:15:00.000Z', url: 'https://research.example.com/patchwork/composer-prototype' }],
     },
     {
       id: 'b5',
@@ -95,7 +95,7 @@ export const seedWorkspace: Workspace = {
       outcome:
         'Inline preview users completed revisions faster and described the flow with more confidence.',
       occurredAt: '2026-07-08T13:45:00.000Z',
-      sourceLinks: ['https://research.example.com/patchwork/preview-comparison'],
+      evidence: [{ id: 'e5', projectId: 'patchwork', breadcrumbId: 'b5', kind: 'Link', source: 'Research archive', title: 'Preview comparison', capturedAt: '2026-07-08T13:45:00.000Z', url: 'https://research.example.com/patchwork/preview-comparison' }],
     },
     {
       id: 'b6',
@@ -111,7 +111,7 @@ export const seedWorkspace: Workspace = {
       outcome:
         'Ten makers published without support; the next focus is validating whether inline preview improves the flows themselves.',
       occurredAt: '2026-07-14T17:00:00.000Z',
-      sourceLinks: ['https://research.example.com/patchwork/pilot-results'],
+      evidence: [{ id: 'e6', projectId: 'patchwork', breadcrumbId: 'b6', kind: 'Link', source: 'Research archive', title: 'Pilot results', capturedAt: '2026-07-14T17:00:00.000Z', url: 'https://research.example.com/patchwork/pilot-results' }],
     },
     {
       id: 'b7',
@@ -125,7 +125,7 @@ export const seedWorkspace: Workspace = {
         'The pilot established that inline preview helped people publish, but did not yet establish whether the published flows worked for their end users.',
       outcome: '',
       occurredAt: '2026-07-17T10:30:00.000Z',
-      sourceLinks: ['https://research.example.com/patchwork/pilot-check-ins'],
+      evidence: [{ id: 'e7', projectId: 'patchwork', breadcrumbId: 'b7', kind: 'Link', source: 'Research archive', title: 'Pilot check-ins', capturedAt: '2026-07-17T10:30:00.000Z', url: 'https://research.example.com/patchwork/pilot-check-ins' }],
     },
   ],
 }

@@ -36,15 +36,27 @@ describe('project timeline', () => {
     expect(html).toContain('Traced source')
   })
 
-  it('renders an identifiable source while preserving its full destination', () => {
+  it('renders typed evidence while preserving its provenance and destination', () => {
     const link = 'https://research.example.com/projects/patchwork/pilot-evidence'
     const breadcrumb = {
       ...seedWorkspace.breadcrumbs[0],
-      sourceLinks: [link],
+      evidence: [{
+        id: 'test-evidence',
+        projectId: 'patchwork',
+        breadcrumbId: 'b1',
+        kind: 'GitHub commit' as const,
+        source: 'acme/patchwork',
+        title: 'Add inline preview',
+        capturedAt: '2026-07-18T12:00:00.000Z',
+        url: link,
+        commitSha: 'a1b2c3d4',
+      }],
     }
     const html = renderToStaticMarkup(<Timeline breadcrumbs={[breadcrumb]} />)
 
-    expect(html).toContain('research.example.com/projects/patchwork/pilot-evidence')
+    expect(html).toContain('Add inline preview')
+    expect(html).toContain('acme/patchwork')
+    expect(html).toContain('a1b2c3d')
     expect(html).toContain(`href="${link}"`)
     expect(html).toContain('target="_blank"')
     expect(html).toContain('(opens in a new tab)')
@@ -73,6 +85,7 @@ describe('project timeline', () => {
 
     expect(html).toContain('Supported by')
     expect(html).toContain(source.title)
+    expect(html).toContain('1 evidence source')
     expect(html).toContain('Builds on')
     expect(html).toContain(predecessor.title)
     expect(html).toContain(

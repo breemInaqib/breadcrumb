@@ -9,6 +9,13 @@ describe('project story', () => {
     expect(sortChronologically(reversed).at(-1)?.id).toBe('b7')
   })
 
+  it('orders matching timestamps by ID so citations remain deterministic', () => {
+    const first = { ...seedWorkspace.breadcrumbs[0], id: 'b-z', occurredAt: '2026-07-20T12:00:00.000Z' }
+    const second = { ...seedWorkspace.breadcrumbs[1], id: 'b-a', occurredAt: '2026-07-20T12:00:00.000Z' }
+
+    expect(sortChronologically([first, second]).map(({ id }) => id)).toEqual(['b-a', 'b-z'])
+  })
+
   it('derives traceable sections from existing breadcrumbs', () => {
     const story = deriveStory(seedWorkspace.project, seedWorkspace.breadcrumbs)
 
@@ -74,6 +81,31 @@ describe('project story', () => {
     ])
 
     expect(story.some((section) => section.sourceIds.includes('b8'))).toBe(true)
+  })
+
+  it('does not let supporting evidence create or reorder story memory by itself', () => {
+    const withMoreEvidence = seedWorkspace.breadcrumbs.map((breadcrumb) =>
+      breadcrumb.id === 'b6'
+        ? {
+          ...breadcrumb,
+          evidence: [...breadcrumb.evidence, {
+            id: 'commit-evidence',
+            projectId: 'patchwork',
+            breadcrumbId: 'b6',
+            kind: 'GitHub commit' as const,
+            source: 'acme/patchwork',
+            repository: 'acme/patchwork',
+            title: 'Add pilot instrumentation',
+            capturedAt: '2026-07-18T12:00:00.000Z',
+            url: 'https://github.com/acme/patchwork/commit/ab12cd34ef56',
+            commitSha: 'ab12cd3',
+          }],
+        }
+        : breadcrumb,
+    )
+
+    expect(deriveStory(seedWorkspace.project, withMoreEvidence).map((section) => section.sourceIds))
+      .toEqual(deriveStory(seedWorkspace.project, seedWorkspace.breadcrumbs).map((section) => section.sourceIds))
   })
 
   it('follows the latest explicit causal thread as history grows', () => {
