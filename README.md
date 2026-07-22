@@ -2,7 +2,7 @@
 
 **Engineering memory for teams — never lose the story behind your work.**
 
-[**Live Demo →**](https://breadcrumb-evidence-flow-demo.ibrahimnaqib.chatgpt.site/) · [**Watch the Demo →**](https://www.youtube.com/watch?v=4Aci0c6-_fg)
+[**Live Demo →**](https://breadcrumb-evidence-flow-demo.ibrahimnaqib.chatgpt.site/) · [**Watch the Demo →**](https://youtu.be/Ybo-ExBJqjs)
 
 Breadcrumb is a focused project-memory prototype for preserving the important moments behind a piece of work.
 
