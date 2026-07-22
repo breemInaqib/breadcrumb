@@ -1,25 +1,96 @@
 # Breadcrumb
 
-Breadcrumb is a focused project-memory prototype. It records consequential project moments—decisions, changes, experiments, discoveries, and milestones—and uses them to explain how a project reached its current state.
+**Engineering memory for teams — never lose the story behind your work.**
 
-This repository deliberately does not contain task management, analytics, assignments, chat, integrations, or a general-purpose AI assistant.
+[**Live Demo →**](https://breadcrumb-evidence-flow-demo.ibrahimnaqib.chatgpt.site/) · [**Watch the Demo →**](https://www.youtube.com/watch?v=4Aci0c6-_fg)
 
-## Prototype
+Breadcrumb is a focused project-memory prototype for preserving the important moments behind a piece of work.
 
-The runnable application lives in `app/` and demonstrates one complete project-memory loop:
+Projects rarely become difficult to understand because the files disappear. The harder problem is losing the reasoning around them: why something changed, what was tried, which decisions mattered, what remains unresolved, and how the project reached its current state.
 
-1. Open the seeded Patchwork project or create a separate local project memory.
-2. Browse meaningful moments in chronological order.
-3. Add a breadcrumb that preserves what happened, why, its outcome, and supporting evidence.
-4. Connect a later breadcrumb to the earlier moment that prompted it.
-5. Read a derived “Story so far,” including explicitly incomplete threads.
-6. Follow each narrative citation back to its supporting breadcrumb.
+Breadcrumb gives those moments a durable place to live.
 
-The story is derived locally from the project’s breadcrumbs. It does not require an API key or expose a model-generated claim without source references.
+Instead of treating every commit, file, or link as meaningful by default, Breadcrumb lets a person decide what is worth remembering and explain why it mattered.
+
+**Work produces evidence. People decide what it means.**
+
+A breadcrumb captures that meaning. Supporting evidence keeps it traceable.
+
+## How Breadcrumb works
+
+The application is organised around a simple model:
+
+**Project → Breadcrumb → Evidence**
+
+A **Project** contains the memory of a piece of work.
+
+A **Breadcrumb** records a consequential moment: a decision, change, experiment, discovery, milestone, or unresolved thread. It explains what happened, why it mattered, and what the outcome was.
+
+**Evidence** supports that breadcrumb with something concrete, such as:
+
+* a manual note
+* an external link
+* a GitHub commit
+* a direct file upload
+
+Evidence does not automatically become project memory. A commit is not important simply because it exists. A file does not explain itself. Breadcrumb keeps the human interpretation at the centre while preserving the original evidence behind it.
+
+## Try the prototype
+
+The runnable application lives in `app/` and includes a seeded `Patchwork` project so the full experience can be explored immediately.
+
+The core workflow is:
+
+1. Open an existing project or create a separate local project memory.
+2. See its current goal, recent progress, and open threads.
+3. Browse important moments chronologically in **History**.
+4. Add a breadcrumb describing what happened, why it mattered, and the outcome.
+5. Attach supporting evidence from a note, link, GitHub commit, or file.
+6. Connect later breadcrumbs to earlier moments that influenced them.
+7. Read the project’s derived **Story so far**.
+8. Follow story references back to the breadcrumbs and evidence behind them.
+
+The result is a project history that can be read as more than a log of activity. Someone returning after time away should be able to understand not only what changed, but how the project developed and where its unfinished thinking remains.
+
+The Story is derived locally from saved breadcrumbs and always points back to the project moments that support it.
+
+## GitHub as evidence
+
+Breadcrumb includes a deliberately narrow GitHub workflow.
+
+A project can be associated with one public repository. Breadcrumb can then load a small set of recent commits, allowing a person to select a relevant commit as supporting evidence for a breadcrumb.
+
+GitHub activity is never treated as project memory automatically.
+
+The purpose of the integration is not to reproduce GitHub or continuously ingest repository activity. It is to connect meaningful project decisions back to the real work that supports them.
+
+**GitHub provides evidence. Breadcrumb preserves meaning.**
+
+## Local-first prototype
+
+Breadcrumb currently runs entirely in the browser.
+
+Projects, breadcrumbs, relationships, and evidence are stored locally using browser `localStorage`, so no account, backend service, or API key is required to use the prototype.
+
+This also means the current version has deliberate limitations:
+
+* projects are stored on one browser and device
+* there is no shared workspace or real-time collaboration
+* there is no remote synchronisation
+* uploaded files are stored locally and limited to 1.5 MB
+* external links are preserved but not automatically analysed
+* GitHub currently supports public repositories and recent commits only
+* private repositories, pull requests, issues, webhooks, and background syncing are out of scope
+* the Story is derived deterministically rather than generated by an external AI model
+
+These boundaries keep the prototype focused on proving its central idea: whether real project activity can be turned into a trustworthy, understandable memory without removing the person who experienced the work from the process.
 
 ## Run locally
 
-Requirements: Node.js 20 or newer and npm.
+Requirements:
+
+* Node.js 20 or newer
+* npm
 
 ```bash
 cd app
@@ -27,7 +98,11 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite, normally `http://localhost:5173`.
+Open the local URL printed by Vite, normally:
+
+```text
+http://localhost:5173
+```
 
 ## Verify
 
@@ -40,32 +115,21 @@ npm run build
 npm run lint
 ```
 
-## Implementation
+## Built with
 
-- React, TypeScript, and Vite
-- locally persisted project switching and creation, with each project’s history kept separate
-- one seeded `Patchwork` project with seven believable `Breadcrumb` records
-- browser `localStorage` under `breadcrumb.project-workspace.v1`
-- one shared evidence model for manual notes, external links, GitHub commits, and small direct file uploads; every saved source carries its project and breadcrumb IDs
-- optional one-repository GitHub association per project; a small public commit list can be loaded and a person must explicitly select the one that supports a breadcrumb
-- defensive local-storage normalization that migrates legacy source links, preserves usable records, and drops malformed sources or invalid associations safely
-- deterministic story derivation with breadcrumb citations; Story cites breadcrumbs and History exposes their supporting evidence
-- responsive, keyboard-accessible project workspace and capture drawer
+* React
+* TypeScript
+* Vite
+* Tailwind CSS
+* browser `localStorage`
+* GitHub public commits API
 
-## Evidence and GitHub behavior
+The current prototype is designed to prove one complete loop:
 
-Evidence is deliberately subordinate to a breadcrumb. Adding a source to the capture drawer creates only an unsaved draft; it persists only when a person saves the meaningful breadcrumb it supports. Evidence never creates a breadcrumb, changes the current goal, or changes the derived Story by itself.
+**real work happens → evidence is captured → a person preserves its significance → the project develops a trustworthy memory over time**
 
-Each saved evidence item retains a source kind, title, capture time, source metadata, and exact project/breadcrumb association. Link and commit URLs are HTTP(S); file uploads retain name, MIME type, byte count, and browser-local data. Existing `sourceLinks` arrays migrate to link evidence during load.
+For the fuller product definition and V1 boundaries, see [`docs/product.md`](docs/product.md).
 
-GitHub is intentionally narrow: configure one `owner/repository` in the project chooser, load up to eight recent commits from GitHub’s public API, choose one explicitly, and save it as evidence. Commit URLs and SHAs must belong to the configured repository. Once commit evidence exists, the repository association is locked so its provenance remains true. Loading, authentication, rate-limit, private-repository, malformed-response, and network failures are shown without creating any project activity.
+## License
 
-## Prototype limits
-
-- projects are browser-local; there is no remote join, collaboration, or cross-device sync
-- deterministic narrative synthesis rather than model-backed generation
-- files are stored as browser-local data URLs and are limited to 1.5 MB; there is no server-side file store or cross-device sync
-- GitHub uses the public commits endpoint only. Private repositories, authenticated access, syncing, webhooks, pull requests, and issues are intentionally out of scope
-- external links are not scraped or interpreted; no evidence is automatically promoted into a breadcrumb
-
-The product definition and V1 boundaries are documented in `docs/product.md`.
+This project is licensed under the terms of the [LICENSE](LICENSE) file.
